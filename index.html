@@ -288,6 +288,15 @@ function doPost(e) {
   </div>
  </div>
  <div id="sync-st" class="sync-st"></div>
+ <div id="ar-bar" style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12px;flex-wrap:wrap">
+  <span style="color:var(--txt3)">Auto-refresh YouTube:</span>
+  <button id="ar-toggle" onclick="toggleAutoRefresh()" class="btn btn-sm">...</button>
+  <span style="color:var(--txt3)">Jam:</span>
+  <select id="ar-hour" onchange="setAutoRefreshHour(parseInt(this.value))" class="stage-sel" style="height:26px;font-size:11px">
+   ${Array.from({length:24},(_,i)=&gt;`<option value="${i}">${String(i).padStart(2,'0')}:00</option>`).join('')}
+  </select>
+  <span id="ar-last" style="color:var(--txt3);font-size:11px"></span>
+ </div>
 </header>
 <div class="stats" id="stats"></div>
 <div class="filters" id="filters"></div>
@@ -314,6 +323,8 @@ function doPost(e) {
 <script>
 // ── INIT ──────────────────────────────────────────────────
 let channels = [], apiKeys = [];
+let arSettings = {enabled: true, hour: 6}; // auto-refresh settings
+let lastYTRefresh = null; // tanggal terakhir refresh YouTube
 let activeKeyIdx = 0, filter = "all";
 let expanded = new Set(), loading = {};
 let generatedHtml = "";
@@ -405,19 +416,24 @@ function doLogout(){
 
 // ── Google Sheets sync ────────────────────────────────────
 async function loadFromSheets(){
-  setSyncSt("⟳ Memuat data...","#3266ad");
+  setSyncSt("⟳ Memuat data dari Sheets...","#3266ad");
   try{
     const r=await fetch(SHEETS_URL+"?t="+Date.now());const d=await r.json();
     if(d.error)throw new Error(d.error);
-    channels=d.channels||[];apiKeys=d.apiKeys||[];
-    setSyncSt("✓ Dimuat — "+fmtDtT(new Date().toISOString()),"var(--ok)");
-    render();renderApiKeys();updateApiSum();
-  }catch(e){setSyncSt("⚠ Gagal: "+e.message,"var(--danger)");}
+    channels=d.channels||[];
+    apiKeys=d.apiKeys||[];
+    arSettings=d.arSettings||{enabled:true,hour:6};
+    lastYTRefresh=d.lastYTRefresh||null;
+    setSyncSt("✓ Dimuat dari Sheets — "+fmtDtT(new Date().toISOString()),"var(--txt2)");
+    render();renderApiKeys();updateApiSum();renderArBar();
+    // Cek apakah perlu auto-refresh YouTube
+    checkAutoRefresh();
+  }catch(e){setSyncSt("⚠ Gagal muat: "+e.message,"var(--danger)");}
 }
 async function saveToSheets(){
   setSyncSt("⟳ Menyimpan...","#3266ad");
   try{
-    await fetch(SHEETS_URL,{method:"POST",body:JSON.stringify({channels,apiKeys,updatedAt:new Date().toISOString()}),headers:{"Content-Type":"text/plain"}});
+    await fetch(SHEETS_URL,{method:"POST",body:JSON.stringify({channels,apiKeys,arSettings,lastYTRefresh,updatedAt:new Date().toISOString()}),headers:{"Content-Type":"text/plain"}});
     setSyncSt("✓ Tersimpan — "+fmtDtT(new Date().toISOString()),"var(--ok)");
   }catch(e){setSyncSt("⚠ Gagal simpan: "+e.message,"var(--danger)");}
 }
@@ -446,6 +462,12 @@ function localDate(iso){
 function daysIn(d){if(!d)return null;return Math.floor((Date.now()-new Date(d).getTime())/86400000);}
 function avgViews(v){if(!v||!v.length)return null;return Math.round(v.reduce((a,x)=>a+(x.views||0),0)/v.length);}
 function fmtDt(iso){if(!iso)return"—";return new Date(iso).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"});}
+// Untuk tanggal tersimpan sbg YYYY-MM-DD (hindari UTC midnight parsing)
+function fmtDtFromLocal(str){
+  if(!str)return"—";
+  if(/^\d{4}-\d{2}-\d{2}$/.test(str)){const p=str.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"});}
+  return fmtDt(str);
+}
 function fmtDtS(iso){if(!iso)return"—";return new Date(iso).toLocaleDateString("id-ID",{day:"numeric",month:"short"});}
 function fmtDtT(iso){if(!iso)return"—";return new Date(iso).toLocaleDateString("id-ID",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});}
 function inits(n){if(!n)return"?";return n.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();}
@@ -457,24 +479,26 @@ function detectStage(d){if(d.subscribers>=500)return 3;const a=avgViews(d.videos
 // Hari ke-X: dihitung dari tanggal video pertama rilis
 // Hari ke-1 = hari pertama video rilis, Hari ke-0 = belum ada video
 function dayFromFirst(ch){
-  const fv=ch.firstVideoDate;
-  if(!fv)return 0;
-  // Parse sebagai tanggal lokal bukan UTC (new Date("YYYY-MM-DD") = UTC midnight)
-  const [fy,fm,fd]=fv.split('-').map(Number);
-  const fvLocal=new Date(fy,fm-1,fd); // lokal midnight, bebas timezone
-  const [ty,tm,td]=today().split('-').map(Number);
-  const todayLocal=new Date(ty,tm-1,td);
+  // Selalu hitung dari videos langsung (timestamp penuh) bukan dari stored date (bisa salah UTC)
+  const fvRaw=ch.videos&&ch.videos.length?firstVid(ch):null;
+  const fvStr=fvRaw?localDate(fvRaw):(ch.firstVideoDate||null);
+  if(!fvStr)return 0;
+  const p=fvStr.split('-').map(Number);
+  const fvLocal=new Date(p[0],p[1]-1,p[2]);
+  const t=today().split('-').map(Number);
+  const todayLocal=new Date(t[0],t[1]-1,t[2]);
   return Math.floor((todayLocal-fvLocal)/86400000)+1;
 }
 
 // Tahap 2: info 30 hari dihitung dari video pertama
 function stage2Info(ch){
-  const fv=ch.firstVideoDate;
-  if(!fv)return{elapsed:0,remaining:30,pct:0};
-  const [fy,fm,fd]=fv.split('-').map(Number);
-  const fvLocal=new Date(fy,fm-1,fd);
-  const [ty,tm,td]=today().split('-').map(Number);
-  const todayLocal=new Date(ty,tm-1,td);
+  const fvRaw = ch.videos?.length ? firstVid(ch) : null;
+  const fvStr = fvRaw ? localDate(fvRaw) : ch.firstVideoDate;
+  if(!fvStr) return{elapsed:0,remaining:30,pct:0};
+  const p=fvStr.split('-').map(Number);
+  const fvLocal=new Date(p[0],p[1]-1,p[2]);
+  const t=today().split('-').map(Number);
+  const todayLocal=new Date(t[0],t[1]-1,t[2]);
   const elapsed=Math.floor((todayLocal-fvLocal)/86400000)+1;
   const remaining=Math.max(0,30-(elapsed-1));
   const pct=Math.min(100,((elapsed-1)/30)*100);
@@ -554,12 +578,17 @@ async function refreshOne(id){
   catch(e){alert("Gagal refresh:\n"+e.message);}
   loading[id]=false;render();
 }
-async function refreshAll(){
-  if(!apiKeys.length){alert("Tambah API Key dulu.");return;}
+async function refreshAll(auto=false){
+  if(!apiKeys.length){if(!auto)alert("Tambah API Key dulu.");return;}
   const btn=document.getElementById("btn-ref-all"),ico=document.getElementById("ref-ico");
   btn.disabled=true;ico.className="spin";
+  if(auto)setSyncSt("⟳ Auto-refresh YouTube sedang berjalan ("+channels.length+" channel)...","#3266ad");
   for(const ch of channels)await refreshOne(ch.id);
+  lastYTRefresh=today();
+  await saveToSheets();
   ico.className="";btn.disabled=false;
+  setSyncSt("✓ YouTube di-refresh — "+fmtDtT(new Date().toISOString()),"var(--ok)");
+  renderArBar();
 }
 function changeStage(id,s){channels=channels.map(c=>c.id===id?{...c,stage:parseInt(s),stageDate:today()}:c);saveToSheets();render();}
 function updateNote(id,v){channels=channels.map(c=>c.id===id?{...c,notes:v}:c);saveToSheets();}
@@ -567,6 +596,50 @@ function removeChannel(id){if(!confirm("Hapus channel ini?"))return;channels=cha
 function toggleExpand(id){expanded.has(id)?expanded.delete(id):expanded.add(id);render();}
 function exportData(){const b=new Blob([JSON.stringify({channels,exportedAt:new Date().toISOString()},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="yt-monitor-"+today()+".json";a.click();}
 function importData(evt){const file=evt.target.files[0];if(!file)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.channels){channels=d.channels;saveToSheets();render();alert("Import berhasil! "+channels.length+" channel.");}else alert("Format tidak dikenali.");}catch(e){alert("File tidak valid.");}evt.target.value="";};r.readAsText(file);}
+
+// ── Auto-refresh logic ───────────────────────────────────
+function checkAutoRefresh(){
+  if(!arSettings.enabled)return;
+  if(!apiKeys.length)return;
+  if(!channels.length)return;
+  const nowHour=new Date().getHours();
+  // Auto-refresh kalau: belum refresh hari ini DAN jam sekarang >= jam setting
+  if(lastYTRefresh!==today()&&nowHour>=arSettings.hour){
+    setSyncSt("⟳ Belum refresh hari ini — auto-refresh dimulai...","#e65100");
+    setTimeout(()=>refreshAll(true),1500); // delay sedikit biar user lihat notifnya
+  } else if(lastYTRefresh===today()){
+    setSyncSt("✓ YouTube sudah di-refresh hari ini — "+fmtDtT(new Date(lastYTRefresh).toISOString()),"var(--ok)");
+  } else {
+    // Belum waktunya (jam belum sampai setting)
+    setSyncSt(`ℹ Data dari Sheets. Auto-refresh akan jalan saat jam ${String(arSettings.hour).padStart(2,'0')}:00`,"var(--txt3)");
+  }
+}
+
+function toggleAutoRefresh(){
+  arSettings.enabled=!arSettings.enabled;
+  saveToSheets();renderArBar();
+  if(arSettings.enabled)checkAutoRefresh();
+}
+
+function setAutoRefreshHour(h){
+  arSettings.hour=h;
+  saveToSheets();renderArBar();
+}
+
+function renderArBar(){
+  const toggle=document.getElementById("ar-toggle");
+  const hourSel=document.getElementById("ar-hour");
+  const lastEl=document.getElementById("ar-last");
+  if(!toggle||!hourSel||!lastEl)return;
+  toggle.textContent=arSettings.enabled?"🟢 ON":"⭕ OFF";
+  toggle.style.color=arSettings.enabled?"var(--ok)":"var(--txt3)";
+  hourSel.value=arSettings.hour;
+  hourSel.disabled=!arSettings.enabled;
+  lastEl.textContent=lastYTRefresh
+    ?(lastYTRefresh===today()?"✓ Sudah refresh hari ini":"Terakhir refresh: "+fmtDtS(lastYTRefresh))
+    :"Belum pernah refresh otomatis";
+  lastEl.style.color=lastYTRefresh===today()?"var(--ok)":"var(--txt3)";
+}
 
 // ── Render ────────────────────────────────────────────────
 const cnt=s=>channels.filter(c=>c.stage===s).length;
@@ -602,13 +675,18 @@ function renderRow(ch){
       pGoal=`Hari ke-${s2info.elapsed} dari 30 · Sisa ${s2info.remaining} hari lagi`;
     } else{pct=100;pLbl="Siap dipindah ke email pengelola";}
     const si={
-      1:`Kriteria Tahap 2: avg views ≥100. Sekarang: ${avg!==null?avg+" views":"belum ada data"}. Video pertama rilis: ${fmtDt(ch.firstVideoDate)}`,
+      1:(()=>{
+        const fvRaw=ch.videos?.length?firstVid(ch):null;
+        const fvDisp=fvRaw?localDate(fvRaw):ch.firstVideoDate;
+        return `Kriteria Tahap 2: avg views ≥100. Sekarang: ${avg!==null?avg+" views":"belum ada data"}. Video pertama rilis: ${fmtDtFromLocal(fvDisp)}`;
+      })(),
       2:(()=>{
+        const fvRaw=ch.videos?.length?firstVid(ch):null;
+        const fvStr=fvRaw?localDate(fvRaw):ch.firstVideoDate;
         let dl="—";
-        if(ch.firstVideoDate){
-          const p=ch.firstVideoDate.split('-');
-          const d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+30);
-          dl=fmtDt(d.toISOString());
+        if(fvStr){
+          const p=fvStr.split('-').map(Number);
+          dl=fmtDtFromLocal(new Date(p[0],p[1]-1,p[2]+30).toISOString());
         }
         return `Deadline 500 sub: ${dl} (30 hari dari video pertama). Upload rutin tiap hari — terakhir: ${fmtDt(lastUpload(ch))}`;
       })(),
@@ -635,7 +713,18 @@ function render(){
   document.getElementById("list").innerHTML=shown.length===0?`<div class="empty"><div class="ico">📺</div><h3>${channels.length===0?"Belum ada channel":"Tidak ada channel di filter ini"}</h3></div>`:shown.map(renderRow).join("");
   renderApiKeys();updateApiSum();
 }
-setInterval(()=>{if(document.getElementById("app").style.display!=="none")loadFromSheets();},120000);
+// Sync dari Sheets setiap 2 menit (cek data tim lain)
+setInterval(()=>{
+  if(document.getElementById("app").style.display!=="none"){
+    loadFromSheets();
+  }
+},120000);
+// Cek auto-refresh setiap menit (untuk trigger tepat waktu kalau tab sudah terbuka)
+setInterval(()=>{
+  if(document.getElementById("app").style.display!=="none"){
+    checkAutoRefresh();
+  }
+},60000);
 init();
 </script>
 
