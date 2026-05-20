@@ -1,0 +1,566 @@
+<html lang="id"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT Channel Monitor</title>
+<script>
+// ═══════════════════════════════════════════════════════════
+// KONFIGURASI — diisi otomatis oleh sistem, jangan diedit manual
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbzMFye43ds8Och1aWP8HpEKn9nE0134J6-jBB4yjA_fPkphrgs0RGvi05eg2m8IprE7/exec";
+const TEAM_PIN   = "3210";
+// ═══════════════════════════════════════════════════════════
+</script>
+<style>
+:root{
+  --red:#ff0000;--red-dk:#cc0000;
+  --bg:#f5f5f5;--surf:#fff;--surf2:#f0f0f0;
+  --bdr:rgba(0,0,0,0.09);--bdr2:rgba(0,0,0,0.18);
+  --txt:#111;--txt2:#555;--txt3:#999;
+  --r:10px;--r-sm:6px;--shd:0 1px 3px rgba(0,0,0,0.07);
+  --b-bg:#E6F1FB;--b-txt:#0C447C;--b-bar:#3266ad;
+  --g-bg:#EAF3DE;--g-txt:#27500A;--g-bar:#639922;
+  --t-bg:#E1F5EE;--t-txt:#085041;--t-bar:#0F6E56;
+  --ok:#2e7d32;--warn:#e65100;--danger:#c0392b;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#0f0f0f;--surf:#1a1a1a;--surf2:#252525;
+  --bdr:rgba(255,255,255,0.09);--bdr2:rgba(255,255,255,0.2);
+  --txt:#f1f1f1;--txt2:#aaa;--txt3:#666;
+  --b-bg:#0C2240;--b-txt:#85B7EB;--g-bg:#173404;--g-txt:#C0DD97;--t-bg:#04342C;--t-txt:#5DCAA5;
+  --shd:0 1px 3px rgba(0,0,0,0.4);
+}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);font-size:14px;min-height:100vh}
+.screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:flex-start;justify-content:center;z-index:200;padding:20px;overflow-y:auto}
+.screen-box{background:var(--surf);border:1px solid var(--bdr2);border-radius:var(--r);padding:28px;width:100%;max-width:560px;margin:auto;box-shadow:0 4px 24px rgba(0,0,0,0.1)}
+.s-logo{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.logo-box{width:34px;height:34px;background:var(--red);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-box svg{width:19px;height:19px;fill:#fff}
+.s-logo h1{font-size:17px;font-weight:700}
+.s-logo p{font-size:12px;color:var(--txt3)}
+.step-wrap{display:flex;flex-direction:column;gap:14px;margin-bottom:20px}
+.step{display:flex;gap:12px}
+.step-n{width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.step-body{flex:1;font-size:13px;color:var(--txt2);line-height:1.65}
+.step-body strong{color:var(--txt)}.step-body a{color:var(--b-txt)}
+.code-block{background:var(--surf2);border:1px solid var(--bdr2);border-radius:var(--r-sm);padding:10px 12px;font-size:11px;font-family:monospace;white-space:pre;overflow-x:auto;line-height:1.6;margin:8px 0;position:relative}
+.copy-btn{position:absolute;top:6px;right:6px;padding:2px 8px;font-size:10px;border:1px solid var(--bdr2);border-radius:4px;background:var(--surf);color:var(--txt2);cursor:pointer}
+.copy-btn:hover{background:var(--surf2)}
+.divider{height:1px;background:var(--bdr);margin:18px 0}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:5px}
+.field input{width:100%;height:40px;padding:0 12px;border:1px solid var(--bdr2);border-radius:var(--r-sm);background:var(--surf);color:var(--txt);font-size:13px;font-family:inherit}
+.field input:focus{outline:none;border-color:var(--red)}
+.field .help{font-size:11px;color:var(--txt3);margin-top:5px;line-height:1.5}
+.s-err{font-size:12px;color:var(--danger);padding:8px 12px;background:#fff5f5;border-radius:var(--r-sm);border:1px solid #ffcdd2;margin-top:10px}
+.btn-full{width:100%;height:42px;border:none;border-radius:var(--r-sm);background:var(--red);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;transition:background .15s}
+.btn-full:hover{background:var(--red-dk)}.btn-full:disabled{opacity:.5;cursor:not-allowed}
+.btn-link{background:none;border:none;color:var(--txt3);font-size:12px;cursor:pointer;text-decoration:underline;font-family:inherit;margin-top:10px;display:block;text-align:center}
+
+/* Download step */
+.dl-box{background:#e8f5e9;border:1px solid #a5d6a7;border-radius:var(--r);padding:20px;text-align:center}
+.dl-box h3{font-size:16px;font-weight:700;color:#1b5e20;margin-bottom:8px}
+.dl-box p{font-size:13px;color:#2e7d32;margin-bottom:16px;line-height:1.6}
+.dl-steps{text-align:left;margin-bottom:16px;display:flex;flex-direction:column;gap:8px}
+.dl-step{display:flex;gap:10px;font-size:13px;color:#2e7d32;align-items:flex-start}
+.dl-step .n{width:20px;height:20px;border-radius:50%;background:#2e7d32;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+@media(prefers-color-scheme:dark){.dl-box{background:#1b2e1b;border-color:#2e7d32}.dl-box h3,.dl-box p,.dl-step{color:#81c784}.dl-step .n{background:#388e3c}}
+
+/* PIN */
+.screen-box.pin-box{max-width:300px;text-align:center}
+.pin-dots{display:flex;gap:14px;justify-content:center;margin:18px 0 6px}
+.pin-dot{width:15px;height:15px;border-radius:50%;background:var(--surf2);border:2px solid var(--bdr2);transition:background .12s}
+.pin-dot.filled{background:var(--red);border-color:var(--red)}
+.pin-numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.pin-btn{height:54px;border:1px solid var(--bdr2);border-radius:var(--r-sm);background:var(--surf);color:var(--txt);font-size:20px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .1s}
+.pin-btn:hover{background:var(--surf2)}.pin-btn:active{transform:scale(.95)}
+
+/* APP */
+.wrap{max-width:900px;margin:0 auto;padding:0 16px 48px}
+header{position:sticky;top:0;background:var(--bg);z-index:20;padding:12px 0 10px;border-bottom:1px solid var(--bdr);margin-bottom:14px}
+.hd-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:8px;margin-right:auto}
+.logo h1{font-size:15px;font-weight:700}
+.logo span{font-size:12px;color:var(--txt3);font-weight:400}
+.api-section{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:10px 14px;margin-bottom:12px}
+.api-hd{display:flex;align-items:center;gap:8px}
+.api-hd span{font-size:13px;font-weight:600;flex:1}
+.api-keys-list{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.api-key-row{display:flex;gap:6px;align-items:center}
+.api-key-row input{flex:1;height:30px;padding:0 10px;border:1px solid var(--bdr2);border-radius:var(--r-sm);background:var(--surf2);color:var(--txt);font-size:11px;font-family:monospace}
+.key-st{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap}
+.key-st.ok{background:var(--g-bg);color:var(--g-txt)}.key-st.err{background:#ffebee;color:var(--danger)}.key-st.idle{background:var(--surf2);color:var(--txt3)}.key-st.active{background:var(--b-bg);color:var(--b-txt)}
+.api-add-row{display:flex;gap:6px;margin-top:6px}
+.api-add-row input{flex:1;height:30px;padding:0 10px;border:1px solid var(--bdr);border-radius:var(--r-sm);background:var(--surf2);color:var(--txt);font-size:11px;font-family:monospace}
+.btn{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 12px;border:1px solid var(--bdr2);border-radius:var(--r-sm);background:var(--surf);color:var(--txt);cursor:pointer;font-size:12px;font-family:inherit;transition:background .15s;white-space:nowrap;text-decoration:none}
+.btn:hover{background:var(--surf2)}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-red{background:var(--red);color:#fff;border-color:var(--red)}.btn-red:hover{background:var(--red-dk)}
+.btn-sm{height:26px;padding:0 9px;font-size:11px}.btn-icon{width:26px;height:26px;padding:0;justify-content:center}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:9px 12px}
+.stat .lbl{font-size:11px;color:var(--txt3);margin-bottom:2px}.stat .num{font-size:20px;font-weight:700}
+.stat.s1 .lbl,.stat.s1 .num{color:var(--b-txt)}.stat.s2 .lbl,.stat.s2 .num{color:var(--g-txt)}.stat.s3 .lbl,.stat.s3 .num{color:var(--t-txt)}
+.filters{display:flex;gap:2px;margin-bottom:10px;border-bottom:1px solid var(--bdr)}
+.ftab{padding:6px 14px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--txt2);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit}
+.ftab:hover{color:var(--txt)}.ftab.active{color:var(--txt);border-bottom-color:var(--red);font-weight:600}
+.ch-row{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:6px;box-shadow:var(--shd);overflow:hidden}
+.ch-row:hover{border-color:var(--bdr2)}.ch-row.urgent{border-left:3px solid var(--danger)}.ch-row.expanded{border-color:var(--bdr2)}
+.row-head{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none}
+.row-av{width:34px;height:34px;border-radius:50%;background:var(--surf2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--txt2);overflow:hidden;border:1px solid var(--bdr)}
+.row-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.row-name{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-badges{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.badge{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.badge-1{background:var(--b-bg);color:var(--b-txt)}.badge-2{background:var(--g-bg);color:var(--g-txt)}.badge-3{background:var(--t-bg);color:var(--t-txt)}
+.tag-sm{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--surf2);color:var(--txt3);border:1px solid var(--bdr);white-space:nowrap}
+.tag-urg{background:#fff0f0;color:var(--danger);border-color:#ffcdd2;font-weight:700}
+.tag-ok{background:var(--g-bg);color:var(--g-txt);border-color:#c5e1a5}
+.row-metric{text-align:right;flex-shrink:0;min-width:80px}
+.row-metric .val{font-size:13px;font-weight:700}.row-metric .lbl{font-size:10px;color:var(--txt3)}
+.row-exp-btn{width:24px;height:24px;border-radius:50%;background:var(--surf2);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .2s;font-size:11px;color:var(--txt3)}
+.ch-row.expanded .row-exp-btn{transform:rotate(180deg)}
+.row-actions{display:flex;gap:5px;flex-shrink:0}
+.row-detail{display:none;padding:0 14px 14px;border-top:1px solid var(--bdr)}
+.ch-row.expanded .row-detail{display:block}
+.d-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.metric{background:var(--surf2);border-radius:var(--r-sm);padding:9px 12px}
+.metric .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt3);margin-bottom:4px}
+.metric .val{font-size:17px;font-weight:700}.metric .hint{font-size:10px;color:var(--txt3);margin-top:2px}
+.hint-ok{color:var(--ok)!important}.hint-warn{color:var(--warn)!important}
+.bar-wrap{margin-bottom:10px}
+.bar-row{display:flex;justify-content:space-between;font-size:12px;color:var(--txt2);margin-bottom:5px}
+.bar{height:5px;background:var(--surf2);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s}
+.fill-1{background:var(--b-bar)}.fill-2{background:var(--g-bar)}.fill-3{background:var(--t-bar)}
+.goal-txt{font-size:11px;color:var(--txt3);margin-bottom:8px}
+.si-box{background:var(--surf2);border-radius:var(--r-sm);padding:8px 12px;font-size:12px;color:var(--txt2);margin-bottom:10px;line-height:1.5}
+.si-box.s1{border-left:3px solid var(--b-bar)}.si-box.s2{border-left:3px solid var(--g-bar)}.si-box.s3{border-left:3px solid var(--t-bar)}
+.urg-banner{background:#fff5f5;border:1px solid #ffcdd2;border-radius:var(--r-sm);padding:8px 12px;font-size:12px;color:var(--danger);display:flex;align-items:center;gap:8px;margin-bottom:10px;font-weight:600}
+@media(prefers-color-scheme:dark){.urg-banner{background:#2d1010;border-color:#7b2020;color:#ff8a80}}
+.vid-hd{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--txt3);font-weight:700;margin-bottom:6px}
+.vid-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bdr);font-size:12px}
+.vid-item:last-child{border-bottom:none}
+.vid-n{font-size:10px;color:var(--txt3);width:14px;flex-shrink:0;font-weight:700}
+.vid-title{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--txt2)}
+.vid-title a{color:inherit;text-decoration:none}.vid-title a:hover{color:var(--red)}
+.vid-views{font-weight:700;white-space:nowrap;min-width:64px;text-align:right}
+.vid-date{font-size:10px;color:var(--txt3);white-space:nowrap;min-width:50px;text-align:right}
+.first-badge{font-size:9px;padding:1px 5px;border-radius:3px;background:#e3f2fd;color:#0d47a1;font-weight:700}
+.d-foot{display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--bdr);flex-wrap:wrap}
+.foot-lbl{font-size:11px;color:var(--txt3);white-space:nowrap}
+.stage-sel{height:26px;padding:0 8px;font-size:11px;border:1px solid var(--bdr2);border-radius:20px;background:var(--surf2);color:var(--txt);cursor:pointer;font-family:inherit}
+.note-inp{flex:1;min-width:80px;height:26px;padding:0 10px;border:1px solid var(--bdr);border-radius:var(--r-sm);background:var(--surf2);color:var(--txt);font-size:11px;font-family:inherit}
+.note-inp:focus{outline:none;border-color:var(--bdr2)}
+.foot-time{font-size:10px;color:var(--txt3);white-space:nowrap;margin-left:auto}
+.empty{text-align:center;padding:3rem 1rem;color:var(--txt3)}
+.empty .ico{font-size:38px;margin-bottom:10px}
+.empty h3{font-size:14px;color:var(--txt2);margin-bottom:5px;font-weight:500}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+.modal{background:var(--surf);border:1px solid var(--bdr2);border-radius:var(--r);padding:22px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.22)}
+.modal h2{font-size:15px;font-weight:700;margin-bottom:5px}
+.modal .sub{font-size:12px;color:var(--txt2);margin-bottom:18px;line-height:1.5}
+.m-field{margin-bottom:14px}
+.m-field label{display:block;font-size:12px;color:var(--txt2);margin-bottom:5px;font-weight:600}
+.m-field input{width:100%;height:38px;padding:0 12px;border:1px solid var(--bdr2);border-radius:var(--r-sm);background:var(--surf);color:var(--txt);font-size:13px;font-family:inherit}
+.m-field input:focus{outline:none;border-color:var(--red)}
+.m-field .help{font-size:11px;color:var(--txt3);margin-top:4px;line-height:1.5}
+.m-err{font-size:12px;color:var(--danger);margin-top:8px;padding:8px 12px;background:#fff5f5;border-radius:var(--r-sm);border:1px solid #ffcdd2}
+.m-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.fetch-st{margin-top:12px;padding:9px 12px;background:var(--surf2);border-radius:var(--r-sm);font-size:12px;color:var(--txt2);display:none;align-items:center;gap:8px}
+.fetch-st.show{display:flex}
+.sync-st{font-size:11px;padding:3px 0;margin-bottom:4px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;animation:spin .8s linear infinite}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}.d-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- ── SETUP SCREEN ── -->
+<div class="screen" id="sc-setup" style="display: flex;">
+ <div class="screen-box">
+  <div class="s-logo">
+   <div class="logo-box"><svg viewBox="0 0 24 24"><path d="M21.8 8s-.2-1.4-.8-2c-.8-.8-1.6-.8-2-.9C16.8 5 12 5 12 5s-4.8 0-7 .1c-.4.1-1.2.1-2 .9-.6.6-.8 2-.8 2S2 9.6 2 11.2v1.5c0 1.6.2 3.2.2 3.2s.2 1.4.8 2c.8.8 1.8.8 2.3.9C6.8 19 12 19 12 19s4.8 0 7-.2c.4-.1 1.2-.1 2-.9.6-.6.8-2 .8-2s.2-1.6.2-3.2v-1.5C22 9.6 21.8 8 21.8 8zM10 15V9l5.5 3-5.5 3z"></path></svg></div>
+   <div><h1>YT Monitor — Setup</h1><p>Cukup sekali, ~10 menit</p></div>
+  </div>
+
+  <!-- Step view -->
+  <div id="setup-step-view">
+   <div style="font-size:13px;font-weight:700;margin-bottom:14px">Ikuti langkah berikut:</div>
+   <div class="step-wrap">
+    <div class="step"><span class="step-n">1</span><div class="step-body">Buka <a href="https://sheets.new" target="_blank"><strong>sheets.new</strong></a> → buat Google Sheet baru (nama bebas, biarkan kosong).</div></div>
+    <div class="step"><span class="step-n">2</span><div class="step-body">Di Google Sheet → klik <strong>Extensions → Apps Script</strong> → hapus semua kode yang ada → paste kode ini:<div class="code-block" id="gas-code">function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName("YTMonitor");
+    if (!sheet) {
+      sheet = ss.insertSheet("YTMonitor");
+      sheet.getRange("A1").setValue('{"channels":[],"apiKeys":[]}');
+    }
+    var val = sheet.getRange("A1").getValue();
+    return ContentService
+      .createTextOutput(val || '{"channels":[],"apiKeys":[]}')
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(e) {
+    return ContentService.createTextOutput(JSON.stringify({error:e.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName("YTMonitor");
+    if (!sheet) sheet = ss.insertSheet("YTMonitor");
+    sheet.getRange("A1").setValue(e.postData.contents);
+    return ContentService.createTextOutput('{"status":"ok"}')
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({error:err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}</div><button class="copy-btn" onclick="copyCode()">Copy</button>Klik 💾 <strong>Save</strong> → klik ▶ <strong>Run</strong> → pilih <em>doGet</em> → izinkan akses Google.</div></div>
+    <div class="step"><span class="step-n">3</span><div class="step-body">Klik <strong>Deploy → New deployment</strong> → pilih type <strong>Web app</strong> → isi:<br><em>Execute as</em>: <strong>Me</strong> &nbsp;·&nbsp; <em>Who has access</em>: <strong>Anyone</strong> → Deploy → izinkan → copy <strong>Web app URL</strong>.</div></div>
+    <div class="step"><span class="step-n">4</span><div class="step-body">Paste URL + buat PIN tim di form bawah, lalu klik <strong>Cek &amp; Generate File</strong>. Kamu akan download file <code>index.html</code> baru → upload ke GitHub menggantikan file lama.</div></div>
+   </div>
+   <div class="divider"></div>
+   <div class="field">
+    <label>Web App URL (dari Apps Script)</label>
+    <input type="text" id="s-url" placeholder="https://script.google.com/macros/s/.../exec">
+    <div class="help">Dari Deploy → Manage deployments → copy URL-nya</div>
+   </div>
+   <div class="field">
+    <label>PIN tim (4 digit)</label>
+    <input type="password" id="s-pin" placeholder="Contoh: 1234" maxlength="4" inputmode="numeric">
+    <div class="help">Semua anggota tim pakai PIN yang sama untuk masuk</div>
+   </div>
+   <div id="s-err"></div>
+   <button class="btn-full" id="s-btn" onclick="doSetup()" disabled="">Mengecek koneksi...</button>
+  </div>
+
+  <!-- Download view (muncul setelah setup berhasil) -->
+  <div id="setup-dl-view" style="display:none">
+   <div class="dl-box">
+    <h3>✓ Koneksi berhasil!</h3>
+    <p>File <strong>index.html</strong> sudah di-generate dengan konfigurasi tertanam di dalamnya. Sekarang upload ke GitHub:</p>
+    <div class="dl-steps">
+     <div class="dl-step"><span class="n">1</span><span>Klik tombol Download di bawah → simpan sebagai <strong>index.html</strong></span></div>
+     <div class="dl-step"><span class="n">2</span><span>Buka repo GitHub → klik file <strong>index.html</strong> lama → klik ✏️ Edit → hapus semua → paste isi file baru → Commit</span></div>
+     <div class="dl-step"><span class="n">3</span><span>Atau lebih mudah: hapus file lama → Upload file baru langsung</span></div>
+     <div class="dl-step"><span class="n">4</span><span>Selesai! Tim buka link GitHub Pages → langsung masuk layar PIN</span></div>
+    </div>
+    <button class="btn-full" id="dl-btn" onclick="downloadFile()" style="background:#2e7d32;max-width:280px;margin:0 auto">⬇ Download index.html</button>
+   </div>
+  </div>
+
+ </div>
+</div>
+
+<!-- ── PIN SCREEN ── -->
+<div class="screen" id="sc-pin" style="display:none">
+ <div class="screen-box pin-box">
+  <div class="logo-box" style="margin:0 auto 14px"><svg viewBox="0 0 24 24"><path d="M21.8 8s-.2-1.4-.8-2c-.8-.8-1.6-.8-2-.9C16.8 5 12 5 12 5s-4.8 0-7 .1c-.4.1-1.2.1-2 .9-.6.6-.8 2-.8 2S2 9.6 2 11.2v1.5c0 1.6.2 3.2.2 3.2s.2 1.4.8 2c.8.8 1.8.8 2.3.9C6.8 19 12 19 12 19s4.8 0 7-.2c.4-.1 1.2-.1 2-.9.6-.6.8-2 .8-2s.2-1.6.2-3.2v-1.5C22 9.6 21.8 8 21.8 8zM10 15V9l5.5 3-5.5 3z"></path></svg></div>
+  <div style="font-size:16px;font-weight:700;margin-bottom:4px">YT Monitor</div>
+  <div style="font-size:13px;color:var(--txt2)">Masukkan PIN tim</div>
+  <div class="pin-dots" id="pin-dots">
+   <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+   <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+  </div>
+  <div id="pin-err" style="font-size:12px;color:var(--danger);min-height:16px;margin-bottom:4px"></div>
+  <div class="pin-numpad">
+   <button class="pin-btn" onclick="pinKey('1')">1</button><button class="pin-btn" onclick="pinKey('2')">2</button><button class="pin-btn" onclick="pinKey('3')">3</button>
+   <button class="pin-btn" onclick="pinKey('4')">4</button><button class="pin-btn" onclick="pinKey('5')">5</button><button class="pin-btn" onclick="pinKey('6')">6</button>
+   <button class="pin-btn" onclick="pinKey('7')">7</button><button class="pin-btn" onclick="pinKey('8')">8</button><button class="pin-btn" onclick="pinKey('9')">9</button>
+   <button class="pin-btn" style="font-size:12px;color:var(--txt3)" onclick="pinKey('')"></button><button class="pin-btn" onclick="pinKey('0')">0</button><button class="pin-btn" onclick="pinKey('⌫')">⌫</button>
+  </div>
+ </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app" style="display:none">
+<div class="wrap">
+<header>
+ <div class="hd-top">
+  <div class="logo">
+   <div class="logo-box" style="width:28px;height:28px;border-radius:7px"><svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#fff"><path d="M21.8 8s-.2-1.4-.8-2c-.8-.8-1.6-.8-2-.9C16.8 5 12 5 12 5s-4.8 0-7 .1c-.4.1-1.2.1-2 .9-.6.6-.8 2-.8 2S2 9.6 2 11.2v1.5c0 1.6.2 3.2.2 3.2s.2 1.4.8 2c.8.8 1.8.8 2.3.9C6.8 19 12 19 12 19s4.8 0 7-.2c.4-.1 1.2-.1 2-.9.6-.6.8-2 .8-2s.2-1.6.2-3.2v-1.5C22 9.6 21.8 8 21.8 8zM10 15V9l5.5 3-5.5 3z"></path></svg></div>
+   <h1>YT Monitor <span>— channel tracker</span></h1>
+  </div>
+  <button class="btn" id="btn-ref-all" onclick="refreshAll()"><span id="ref-ico">↻</span> Refresh Semua</button>
+  <button class="btn btn-red" onclick="openAdd()">+ Tambah Channel</button>
+  <button class="btn" onclick="exportData()">⬇ Export</button>
+  <button class="btn" onclick="document.getElementById('imp').click()">⬆ Import</button>
+  <button class="btn" onclick="doLogout()" title="Kunci layar">🔒</button>
+  <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(event)">
+ </div>
+ <div class="api-section">
+  <div class="api-hd"><span>🔑 YouTube API Keys</span><span id="api-sum" style="font-size:11px;color:var(--txt3)"></span><button class="btn btn-sm" onclick="toggleApiPanel()">Kelola ▾</button></div>
+  <div id="api-panel" style="display:none">
+   <div class="api-keys-list" id="api-keys-list"></div>
+   <div class="api-add-row"><input type="password" id="new-key-inp" placeholder="Tambah API key baru (AIzaSy...)"><button class="btn btn-sm btn-red" onclick="addApiKey()">+ Tambah</button></div>
+   <div style="font-size:11px;color:var(--txt3);margin-top:6px">💡 Tambah beberapa key — otomatis pindah ke key berikutnya kalau satu kena limit (403).</div>
+  </div>
+ </div>
+ <div id="sync-st" class="sync-st"></div>
+</header>
+<div class="stats" id="stats"></div>
+<div class="filters" id="filters"></div>
+<div id="list"></div>
+</div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal-ov" id="modal" style="display:none" onclick="if(event.target===this)closeAdd()">
+ <div class="modal">
+  <h2>Tambah Channel</h2>
+  <p class="sub">Masukkan URL YouTube saja. Tahap &amp; tanggal mulai terdeteksi otomatis dari video pertama.</p>
+  <div class="m-field">
+   <label>URL / Handle / Channel ID</label>
+   <input type="text" id="m-url" placeholder="https://youtube.com/@namahandle" autocomplete="off" onkeydown="if(event.key==='Enter')doAdd()">
+   <div class="help">@channelku · UCxxxxxxxx · youtube.com/@channelku</div>
+  </div>
+  <div id="add-err"></div>
+  <div class="fetch-st" id="fetch-st"><span class="spin">↻</span><span id="fetch-txt">Mengambil data...</span></div>
+  <div class="m-btns"><button class="btn" onclick="closeAdd()">Batal</button><button class="btn btn-red" id="btn-add" onclick="doAdd()">Tambah &amp; Deteksi Otomatis</button></div>
+ </div>
+</div>
+
+<script>
+// ── INIT ──────────────────────────────────────────────────
+let channels = [], apiKeys = [];
+let activeKeyIdx = 0, filter = "all";
+let expanded = new Set(), loading = {};
+let generatedHtml = "";
+
+function init() {
+  // Kalau config sudah tertanam di file, langsung ke PIN
+  if (SHEETS_URL && TEAM_PIN) {
+    if (sessionStorage.getItem("ytmon-sess") === "ok") { showApp(); return; }
+    showScreen("pin");
+  } else {
+    showScreen("setup");
+  }
+}
+
+function showScreen(s) {
+  document.getElementById("sc-setup").style.display = s==="setup"?"flex":"none";
+  document.getElementById("sc-pin").style.display   = s==="pin"?"flex":"none";
+  document.getElementById("app").style.display      = "none";
+}
+function showApp() {
+  document.getElementById("sc-setup").style.display = "none";
+  document.getElementById("sc-pin").style.display   = "none";
+  document.getElementById("app").style.display      = "block";
+  sessionStorage.setItem("ytmon-sess","ok");
+  loadFromSheets();
+}
+
+// ── SETUP ─────────────────────────────────────────────────
+function copyCode() {
+  navigator.clipboard.writeText(document.getElementById("gas-code").textContent);
+  const b=document.querySelector(".copy-btn");b.textContent="✓ Copied!";setTimeout(()=>b.textContent="Copy",2000);
+}
+
+async function doSetup() {
+  const url = document.getElementById("s-url").value.trim();
+  const pin = document.getElementById("s-pin").value.trim();
+  if (!url || !url.includes("script.google.com")) { showSErr("URL tidak valid. Harus dari script.google.com"); return; }
+  if (pin.length < 4) { showSErr("PIN minimal 4 digit."); return; }
+  const btn = document.getElementById("s-btn");
+  btn.disabled=true; btn.textContent="Mengecek koneksi...";
+  try {
+    const r = await fetch(url+"?t="+Date.now()); const d = await r.json();
+    if (d.error) throw new Error(d.error);
+
+    // Generate HTML baru dengan config tertanam
+    const src = document.documentElement.outerHTML;
+    generatedHtml = src
+      .replace('const SHEETS_URL = "";', `const SHEETS_URL = "${url}";`)
+      .replace('const TEAM_PIN   = "";', `const TEAM_PIN   = "${pin}";`);
+
+    // Tampilkan download view
+    document.getElementById("setup-step-view").style.display = "none";
+    document.getElementById("setup-dl-view").style.display = "block";
+  } catch(e) {
+    showSErr("Gagal: " + e.message + ". Pastikan Web App di-deploy sebagai Anyone.");
+    btn.disabled=false; btn.textContent="Cek Koneksi & Generate File →";
+  }
+}
+
+function showSErr(m){document.getElementById("s-err").innerHTML=`<div class="s-err">⚠ ${m}</div>`;}
+
+function downloadFile() {
+  const blob = new Blob([generatedHtml], {type:"text/html"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "index.html";
+  a.click();
+}
+
+// ── PIN ───────────────────────────────────────────────────
+let pinVal="";
+function pinKey(k){
+  if(k==="")return;
+  if(k==="⌫")pinVal=pinVal.slice(0,-1);
+  else if(pinVal.length<4)pinVal+=k;
+  updPin();
+  if(pinVal.length===4){
+    setTimeout(()=>{
+      if(pinVal===TEAM_PIN){pinVal="";updPin();showApp();}
+      else{document.getElementById("pin-err").textContent="PIN salah, coba lagi.";pinVal="";updPin();}
+    },150);
+  }
+}
+function updPin(){for(let i=0;i<4;i++)document.getElementById("pd"+i).className="pin-dot"+(i<pinVal.length?" filled":"");}
+function doLogout(){sessionStorage.removeItem("ytmon-sess");showScreen("pin");pinVal="";updPin();}
+
+// ── Google Sheets sync ────────────────────────────────────
+async function loadFromSheets(){
+  setSyncSt("⟳ Memuat data...","#3266ad");
+  try{
+    const r=await fetch(SHEETS_URL+"?t="+Date.now());const d=await r.json();
+    if(d.error)throw new Error(d.error);
+    channels=d.channels||[];apiKeys=d.apiKeys||[];
+    setSyncSt("✓ Dimuat — "+fmtDtT(new Date().toISOString()),"var(--ok)");
+    render();renderApiKeys();updateApiSum();
+  }catch(e){setSyncSt("⚠ Gagal: "+e.message,"var(--danger)");}
+}
+async function saveToSheets(){
+  setSyncSt("⟳ Menyimpan...","#3266ad");
+  try{
+    await fetch(SHEETS_URL,{method:"POST",body:JSON.stringify({channels,apiKeys,updatedAt:new Date().toISOString()}),headers:{"Content-Type":"text/plain"}});
+    setSyncSt("✓ Tersimpan — "+fmtDtT(new Date().toISOString()),"var(--ok)");
+  }catch(e){setSyncSt("⚠ Gagal simpan: "+e.message,"var(--danger)");}
+}
+function setSyncSt(m,c){const el=document.getElementById("sync-st");if(!el)return;el.style.color=c;el.textContent=m;}
+
+// ── API Keys ──────────────────────────────────────────────
+function toggleApiPanel(){const p=document.getElementById("api-panel");p.style.display=p.style.display==="none"?"block":"none";if(p.style.display==="block")renderApiKeys();}
+function addApiKey(){const inp=document.getElementById("new-key-inp");const v=inp.value.trim();if(!v||!v.startsWith("AIza")){alert("Format key tidak valid.");return;}if(apiKeys.find(k=>k.key===v)){alert("Key sudah ada.");return;}apiKeys.push({key:v,label:"Key "+(apiKeys.length+1),status:"idle"});inp.value="";renderApiKeys();updateApiSum();saveToSheets();}
+function removeApiKey(i){if(!confirm("Hapus key ini?"))return;apiKeys.splice(i,1);apiKeys.forEach((k,j)=>{if(k.label.startsWith("Key "))k.label="Key "+(j+1);});if(activeKeyIdx>=apiKeys.length)activeKeyIdx=0;renderApiKeys();updateApiSum();saveToSheets();}
+function renderApiKeys(){const el=document.getElementById("api-keys-list");if(!el)return;if(!apiKeys.length){el.innerHTML=`<div style="font-size:12px;color:var(--txt3);padding:4px 0">Belum ada API key.</div>`;return;}el.innerHTML=apiKeys.map((k,i)=>`<div class="api-key-row"><input type="password" value="${k.key}" readonly style="cursor:default"><span class="key-st ${i===activeKeyIdx?"active":k.status}">${i===activeKeyIdx?"▶ Aktif":k.status==="err"?"⚠ Limit":k.status==="ok"?"✓ OK":"Idle"}</span><button class="btn btn-sm btn-icon" onclick="removeApiKey(${i})">✕</button></div>`).join("");}
+function updateApiSum(){const el=document.getElementById("api-sum");if(!el)return;const ok=apiKeys.filter(k=>k.status!=="err").length;el.textContent=!apiKeys.length?"Belum ada key":`${apiKeys.length} key · ${ok} aktif`;}
+function getActiveKey(){if(!apiKeys.length)return null;for(let i=0;i<apiKeys.length;i++){const idx=(activeKeyIdx+i)%apiKeys.length;if(apiKeys[idx].status!=="err"){activeKeyIdx=idx;return apiKeys[idx].key;}}apiKeys.forEach(k=>k.status="idle");activeKeyIdx=0;saveToSheets();return apiKeys[0]?.key||null;}
+function markKeyErr(key){const k=apiKeys.find(x=>x.key===key);if(k)k.status="err";saveToSheets();renderApiKeys();updateApiSum();activeKeyIdx=(activeKeyIdx+1)%Math.max(apiKeys.length,1);}
+function markKeyOk(key){const k=apiKeys.find(x=>x.key===key);if(k)k.status="ok";}
+
+// ── Helpers ───────────────────────────────────────────────
+function fmt(n){if(n===null||n===undefined||isNaN(n))return"—";n=parseInt(n);if(n>=1e6)return(n/1e6).toFixed(1)+"jt";if(n>=1e3)return(n/1e3).toFixed(1)+"rb";return n.toLocaleString("id-ID");}
+function today(){return new Date().toISOString().split("T")[0];}
+function daysIn(d){if(!d)return null;return Math.floor((Date.now()-new Date(d).getTime())/86400000);}
+function avgViews(v){if(!v||!v.length)return null;return Math.round(v.reduce((a,x)=>a+(x.views||0),0)/v.length);}
+function fmtDt(iso){if(!iso)return"—";return new Date(iso).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"});}
+function fmtDtS(iso){if(!iso)return"—";return new Date(iso).toLocaleDateString("id-ID",{day:"numeric",month:"short"});}
+function fmtDtT(iso){if(!iso)return"—";return new Date(iso).toLocaleDateString("id-ID",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});}
+function inits(n){if(!n)return"?";return n.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();}
+function parseInput(raw){raw=raw.trim();if(/^UC[\w-]{20,}$/.test(raw))return{type:"id",value:raw};const hm=raw.match(/@([\w.-]+)/);if(hm)return{type:"handle",value:"@"+hm[1]};const cm=raw.match(/channel\/(UC[\w-]+)/);if(cm)return{type:"id",value:cm[1]};return{type:"handle",value:raw.startsWith("@")?raw:"@"+raw};}
+
+// ── Stage ─────────────────────────────────────────────────
+function detectStage(d){if(d.subscribers>=500)return 3;const a=avgViews(d.videos);if(a!==null&&a>=100)return 2;return 1;}
+function isUrgent(ch){if(ch.stage!==2||!ch.videos?.length)return false;const s=[...ch.videos].sort((a,b)=>new Date(b.publishedAt)-new Date(a.publishedAt));return Math.floor((Date.now()-new Date(s[0].publishedAt).getTime())/86400000)>1;}
+function daysSinceLast(ch){if(!ch.videos?.length)return null;const s=[...ch.videos].sort((a,b)=>new Date(b.publishedAt)-new Date(a.publishedAt));return Math.floor((Date.now()-new Date(s[0].publishedAt).getTime())/86400000);}
+function lastUpload(ch){if(!ch.videos?.length)return null;return[...ch.videos].sort((a,b)=>new Date(b.publishedAt)-new Date(a.publishedAt))[0].publishedAt;}
+function firstVid(ch){if(!ch.videos?.length)return null;return[...ch.videos].sort((a,b)=>new Date(a.publishedAt)-new Date(b.publishedAt))[0].publishedAt;}
+
+// ── YouTube API ───────────────────────────────────────────
+async function apiFetch(url,retried=false){
+  const key=getActiveKey();if(!key)throw new Error("Tidak ada API key.");
+  const r=await fetch(url+(url.includes("?")?"&":"?")+"key="+key);const d=await r.json();
+  if(d.error){if((d.error.code===403||d.error.code===429)&&!retried){markKeyErr(key);const nk=getActiveKey();if(nk&&nk!==key)return apiFetch(url,true);}throw new Error(d.error.message);}
+  markKeyOk(key);return d;
+}
+async function resolveHandle(h){const d=await apiFetch(`https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${encodeURIComponent(h)}`);if(!d.items?.length)throw new Error("Channel tidak ditemukan: "+h);return d.items[0].id;}
+async function fetchYT(ytId){
+  const d1=await apiFetch(`https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${ytId}`);
+  if(!d1.items?.length)throw new Error("Channel tidak ditemukan");
+  const item=d1.items[0];
+  const d2=await apiFetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${ytId}&order=date&type=video&maxResults=50`);
+  let videos=[];
+  if(d2.items?.length){const ids=d2.items.map(v=>v.id.videoId).filter(Boolean).join(",");if(ids){const d3=await apiFetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${ids}`);videos=d2.items.filter(v=>v.id.videoId).map(v=>{const st=d3.items?.find(x=>x.id===v.id.videoId);return{id:v.id.videoId,title:v.snippet.title,publishedAt:v.snippet.publishedAt,views:parseInt(st?.statistics?.viewCount||0),likes:parseInt(st?.statistics?.likeCount||0)};});}}
+  return{ytId:item.id,name:item.snippet.title,thumbnail:item.snippet.thumbnails?.default?.url||null,subscribers:parseInt(item.statistics.subscriberCount||0),totalViews:parseInt(item.statistics.viewCount||0),videoCount:parseInt(item.statistics.videoCount||0),videos,lastFetched:new Date().toISOString()};
+}
+
+// ── Add Channel ───────────────────────────────────────────
+function openAdd(){document.getElementById("m-url").value="";document.getElementById("add-err").innerHTML="";document.getElementById("fetch-st").classList.remove("show");document.getElementById("btn-add").disabled=false;document.getElementById("modal").style.display="flex";setTimeout(()=>document.getElementById("m-url").focus(),50);}
+function closeAdd(){document.getElementById("btn-add").disabled=false;document.getElementById("fetch-st").classList.remove("show");document.getElementById("modal").style.display="none";}
+async function doAdd(){
+  const raw=document.getElementById("m-url").value.trim();
+  if(!raw){showAddErr("Masukkan URL channel.");return;}
+  if(!apiKeys.length){showAddErr("Tambah YouTube API Key dulu di panel atas.");return;}
+  setAddLoad(true,"Menghubungi YouTube API...");
+  try{
+    const p=parseInput(raw);let ytId;
+    if(p.type==="id")ytId=p.value;else{setAddLoad(true,"Mencari channel...");ytId=await resolveHandle(p.value);}
+    setAddLoad(true,"Mengambil statistik & video...");
+    const data=await fetchYT(ytId);
+    const stage=detectStage(data);
+    const fv=firstVid({videos:data.videos});
+    let sd=fv?fv.split("T")[0]:today();
+    if(stage===2&&data.videos.length>=6){const sv=[...data.videos].sort((a,b)=>new Date(a.publishedAt)-new Date(b.publishedAt));sd=sv[5].publishedAt.split("T")[0];}
+    else if(stage===3)sd=today();
+    const newCh={id:Date.now().toString(),inputValue:raw,ytId,stage,stageDate:sd,firstVideoDate:fv?fv.split("T")[0]:null,notes:"",addedAt:new Date().toISOString(),...data};
+    channels.push(newCh);
+    setAddLoad(true,"Menyimpan ke Google Sheets...");
+    await saveToSheets();setAddLoad(false);closeAdd();expanded.add(newCh.id);render();
+  }catch(e){setAddLoad(false);showAddErr("Gagal: "+e.message);}
+}
+function setAddLoad(on,txt=""){document.getElementById("fetch-st").classList[on?"add":"remove"]("show");if(on){document.getElementById("fetch-txt").textContent=txt;document.getElementById("add-err").innerHTML="";}document.getElementById("btn-add").disabled=on;}
+function showAddErr(m){document.getElementById("add-err").innerHTML=`<div class="m-err">⚠ ${m}</div>`;setAddLoad(false);}
+
+// ── Refresh ───────────────────────────────────────────────
+async function refreshOne(id){
+  if(!apiKeys.length)return;const ch=channels.find(c=>c.id===id);if(!ch)return;
+  loading[id]=true;render();
+  try{const data=await fetchYT(ch.ytId);const ns=detectStage(data);let sd=ch.stageDate;if(ns!==ch.stage)sd=today();channels=channels.map(c=>c.id===id?{...c,...data,stage:ns,stageDate:sd}:c);await saveToSheets();}
+  catch(e){alert("Gagal refresh:\n"+e.message);}
+  loading[id]=false;render();
+}
+async function refreshAll(){
+  if(!apiKeys.length){alert("Tambah API Key dulu.");return;}
+  const btn=document.getElementById("btn-ref-all"),ico=document.getElementById("ref-ico");
+  btn.disabled=true;ico.className="spin";
+  for(const ch of channels)await refreshOne(ch.id);
+  ico.className="";btn.disabled=false;
+}
+function changeStage(id,s){channels=channels.map(c=>c.id===id?{...c,stage:parseInt(s),stageDate:today()}:c);saveToSheets();render();}
+function updateNote(id,v){channels=channels.map(c=>c.id===id?{...c,notes:v}:c);saveToSheets();}
+function removeChannel(id){if(!confirm("Hapus channel ini?"))return;channels=channels.filter(c=>c.id!==id);expanded.delete(id);saveToSheets();render();}
+function toggleExpand(id){expanded.has(id)?expanded.delete(id):expanded.add(id);render();}
+function exportData(){const b=new Blob([JSON.stringify({channels,exportedAt:new Date().toISOString()},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="yt-monitor-"+today()+".json";a.click();}
+function importData(evt){const file=evt.target.files[0];if(!file)return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.channels){channels=d.channels;saveToSheets();render();alert("Import berhasil! "+channels.length+" channel.");}else alert("Format tidak dikenali.");}catch(e){alert("File tidak valid.");}evt.target.value="";};r.readAsText(file);}
+
+// ── Render ────────────────────────────────────────────────
+const cnt=s=>channels.filter(c=>c.stage===s).length;
+function renderRow(ch){
+  const avg=avgViews(ch.videos),urgent=isUrgent(ch),gap=daysSinceLast(ch),exp=expanded.has(ch.id),ini=inits(ch.name);
+  const ytUrl=`https://youtube.com/channel/${ch.ytId}`;
+  let rmVal="—",rmLbl="";
+  if(ch.stage===1){rmVal=fmt(avg);rmLbl="avg views";}else if(ch.stage===2){rmVal=fmt(ch.subscribers);rmLbl="subscriber";}else{rmVal="✓ Siap";rmLbl="transfer";}
+  let stTag="";if(urgent)stTag=`<span class="tag-sm tag-urg">⚠ ${gap}h kosong</span>`;else if(ch.stage===2&&gap===0)stTag=`<span class="tag-sm tag-ok">✓ Hari ini</span>`;
+  const days=daysIn(ch.stageDate);
+  let detail="";
+  if(exp){
+    let pct=0,pLbl="",pGoal="";
+    if(ch.stage===1){const v=Math.min(ch.videoCount||0,6);pct=(v/6)*100;pLbl=`${v} dari 6 video`;pGoal=avg!==null&&avg>=100?"✓ Avg views ≥100 — akan naik Tahap 2 saat Refresh":`Syarat naik Tahap 2: avg views ≥100 (sekarang: ${avg!==null?avg:0})`;}
+    else if(ch.stage===2){const s=ch.subscribers||0;pct=Math.min(100,(s/500)*100);pLbl=`${fmt(s)} / 500 sub`;const dL=ch.stageDate?Math.max(0,30-daysIn(ch.stageDate)):"?";pGoal=`Target 500 sub · Sisa ${dL} hari`;}
+    else{pct=100;pLbl="Siap dipindah ke email pengelola";}
+    const si={1:`Kriteria Tahap 2: avg views ≥100. Sekarang: ${avg!==null?avg+" views":"belum ada data"}. Video pertama: ${fmtDt(ch.firstVideoDate)}`,2:`Upload rutin tiap hari. Terakhir: ${fmtDt(lastUpload(ch))}. Mulai Tahap 2: ${fmtDt(ch.stageDate)}`,3:`≥500 subscriber. Siap transfer ke email pengelola.`};
+    const ub=urgent?`<div class="urg-banner">⚠ Upload terakhir ${fmtDtS(lastUpload(ch))} — sudah ${gap} hari kosong!</div>`:"";
+    let vh="";if(ch.stage===1&&ch.videos?.length){const sv=[...ch.videos].sort((a,b)=>new Date(a.publishedAt)-new Date(b.publishedAt));vh=`<div class="vid-hd" style="margin-top:10px">Video rilis</div>`+sv.slice(0,6).map((v,i)=>`<div class="vid-item"><span class="vid-n">${i+1}</span><span class="vid-title"><a href="https://youtu.be/${v.id}" target="_blank">${v.title}</a>${i===0?'<span class="first-badge" style="margin-left:4px">PERTAMA</span>':""}</span><span class="vid-views" style="color:${v.views>=100?"var(--ok)":v.views>=50?"var(--warn)":"var(--txt2)"}">${fmt(v.views)}</span><span class="vid-date">${fmtDtS(v.publishedAt)}</span></div>`).join("");}
+    detail=`<div class="row-detail">${ub}<div class="d-grid"><div class="metric"><div class="lbl">Subscriber</div><div class="val">${fmt(ch.subscribers)}</div>${ch.stage===2&&ch.subscribers?`<div class="hint">${Math.round((ch.subscribers/500)*100)}% dari 500</div>`:""}</div><div class="metric"><div class="lbl">Total Video</div><div class="val">${fmt(ch.videoCount)}</div>${ch.stage===1?`<div class="hint">${Math.min(ch.videoCount||0,6)}/6</div>`:""}${ch.stage===2?`<div class="hint ${urgent?"hint-warn":""}">${urgent?"⚠ Perlu upload":"Upload rutin"}</div>`:""}</div><div class="metric"><div class="lbl">${ch.stage===2?"Upload Terakhir":"Avg Views"}</div><div class="val" style="font-size:${ch.stage===2?"13px":"17px"};padding-top:${ch.stage===2?"3px":"0"}">${ch.stage===2?(lastUpload(ch)?fmtDtS(lastUpload(ch)):"—"):fmt(avg)}</div>${ch.stage===1&&avg!==null?`<div class="hint ${avg>=100?"hint-ok":avg>=50?"hint-warn":""}">${avg>=100?"✓ Ratusan":"masih rendah"}</div>`:""}${ch.stage===2&&gap!==null?`<div class="hint ${urgent?"hint-warn":"hint-ok"}">${urgent?gap+" hari kosong":"Hari ini ✓"}</div>`:""}</div></div><div class="bar-wrap"><div class="bar-row"><span>${pLbl}</span><span style="font-weight:700">${Math.round(pct)}%</span></div><div class="bar"><div class="bar-fill fill-${ch.stage}" style="width:${pct}%"></div></div><div class="goal-txt">${pGoal}</div>${vh}</div><div class="si-box s${ch.stage}">${si[ch.stage]}</div><div class="d-foot"><span class="foot-lbl">Pindah tahap:</span><select class="stage-sel" onchange="changeStage('${ch.id}',this.value)"><option value="1" ${ch.stage===1?"selected":""}>Tahap 1</option><option value="2" ${ch.stage===2?"selected":""}>Tahap 2</option><option value="3" ${ch.stage===3?"selected":""}>Tahap 3</option></select><input class="note-inp" placeholder="Catatan..." value="${(ch.notes||"").replace(/"/g,"&quot;")}" onchange="updateNote('${ch.id}',this.value)"><span class="foot-time">${ch.lastFetched?"Update: "+fmtDtT(ch.lastFetched):"Belum di-refresh"}</span></div></div>`;
+  }
+  return `<div class="ch-row${urgent?" urgent":""}${exp?" expanded":""}" id="row-${ch.id}"><div class="row-head" onclick="toggleExpand('${ch.id}')"><div class="row-av">${ch.thumbnail?`<img src="${ch.thumbnail}" alt="">`:ini}</div><span class="row-name">${ch.name||ch.inputValue}</span><div class="row-badges"><span class="badge badge-${ch.stage}">Tahap ${ch.stage}</span>${days!==null?`<span class="tag-sm">Hari ke-${days+1}</span>`:""}${stTag}</div><div class="row-metric"><div class="val">${rmVal}</div><div class="lbl">${rmLbl}</div></div><div class="row-actions" onclick="event.stopPropagation()">${apiKeys.length?`<button class="btn btn-sm btn-icon" onclick="refreshOne('${ch.id}')">${loading[ch.id]?'<span class="spin">↻</span>':"↻"}</button>`:""}<a href="${ytUrl}" target="_blank" class="btn btn-sm btn-icon" style="text-decoration:none">↗</a><button class="btn btn-sm btn-icon" onclick="removeChannel('${ch.id}')" style="color:var(--danger)">✕</button></div><div class="row-exp-btn">▼</div></div>${detail}</div>`;
+}
+function render(){
+  document.getElementById("stats").innerHTML=`<div class="stat"><div class="lbl">Total</div><div class="num">${channels.length}</div></div><div class="stat s1"><div class="lbl">Tahap 1</div><div class="num">${cnt(1)}</div></div><div class="stat s2"><div class="lbl">Tahap 2</div><div class="num">${cnt(2)}</div></div><div class="stat s3"><div class="lbl">Tahap 3</div><div class="num">${cnt(3)}</div></div>`;
+  document.getElementById("filters").innerHTML=[{v:"all",l:`Semua (${channels.length})`},{v:"1",l:`Tahap 1 (${cnt(1)})`},{v:"2",l:`Tahap 2 (${cnt(2)})`},{v:"3",l:`Tahap 3 (${cnt(3)})`}].map(t=>`<button class="ftab${filter===t.v?" active":""}" onclick="filter='${t.v}';render()">${t.l}</button>`).join("");
+  let shown=filter==="all"?[...channels]:channels.filter(c=>c.stage===parseInt(filter));
+  shown.sort((a,b)=>(isUrgent(a)?0:1)-(isUrgent(b)?0:1));
+  document.getElementById("list").innerHTML=shown.length===0?`<div class="empty"><div class="ico">📺</div><h3>${channels.length===0?"Belum ada channel":"Tidak ada channel di filter ini"}</h3></div>`:shown.map(renderRow).join("");
+  renderApiKeys();updateApiSum();
+}
+setInterval(()=>{if(document.getElementById("app").style.display!=="none")loadFromSheets();},120000);
+init();
+</script>
+
+
+</body></html>
