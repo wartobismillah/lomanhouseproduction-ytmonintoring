@@ -5,7 +5,7 @@
 <script>
 // ═══════════════════════════════════════════════════════════
 // KONFIGURASI — diisi otomatis oleh sistem, jangan diedit manual
-const SHEETS_URL = "https://script.google.com/macros/s/AKfycbzMFye43ds8Och1aWP8HpEKn9nE0134J6-jBB4yjA_fPkphrgs0RGvi05eg2m8IprE7/exec";
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbxLlgadXCS2OcQW-kQBivMvY1WSYPcS1FVFrojSs-ODxOuP7-gz41pF7HGe-ULZmgeB/exec";
 const TEAM_PIN   = "siappakai";
 // ═══════════════════════════════════════════════════════════
 </script>
@@ -187,30 +187,35 @@ header{position:sticky;top:0;background:var(--bg);z-index:20;padding:12px 0 10px
    <div style="font-size:13px;font-weight:700;margin-bottom:14px">Ikuti langkah berikut:</div>
    <div class="step-wrap">
     <div class="step"><span class="step-n">1</span><div class="step-body">Buka <a href="https://sheets.new" target="_blank"><strong>sheets.new</strong></a> → buat Google Sheet baru (nama bebas, biarkan kosong).</div></div>
-    <div class="step"><span class="step-n">2</span><div class="step-body">Di Google Sheet → klik <strong>Extensions → Apps Script</strong> → hapus semua kode yang ada → paste kode ini:<div class="code-block" id="gas-code">function doGet(e) {
+    <div class="step"><span class="step-n">2</span><div class="step-body">Di Google Sheet → klik <strong>Extensions → Apps Script</strong> → hapus semua kode yang ada → paste kode ini:<div class="code-block" id="gas-code">// ═══════════════════════════════════════════════════
+// YT Monitor — Apps Script (Google Drive Storage)
+// Simpan sebagai file di Drive, bukan cell Sheets
+// ═══════════════════════════════════════════════════
+var FILE_NAME = "ytmonitor-data.json";
+
+function getOrCreateFile() {
+  var files = DriveApp.getFilesByName(FILE_NAME);
+  if (files.hasNext()) return files.next();
+  return DriveApp.createFile(FILE_NAME, '{"channels":[],"apiKeys":[]}', MimeType.PLAIN_TEXT);
+}
+
+function doGet(e) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("YTMonitor");
-    if (!sheet) {
-      sheet = ss.insertSheet("YTMonitor");
-      sheet.getRange("A1").setValue('{"channels":[],"apiKeys":[]}');
-    }
-    var val = sheet.getRange("A1").getValue();
+    var content = getOrCreateFile().getBlob().getDataAsString();
     return ContentService
-      .createTextOutput(val || '{"channels":[],"apiKeys":[]}')
+      .createTextOutput(content)
       .setMimeType(ContentService.MimeType.JSON);
-  } catch(e) {
-    return ContentService.createTextOutput(JSON.stringify({error:e.toString()}))
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({error:err.toString()}))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 function doPost(e) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("YTMonitor");
-    if (!sheet) sheet = ss.insertSheet("YTMonitor");
-    sheet.getRange("A1").setValue(e.postData.contents);
+    var data = e.postData.contents;
+    var file = getOrCreateFile();
+    file.setContent(data);
     return ContentService.createTextOutput('{"status":"ok"}')
       .setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
@@ -474,16 +479,8 @@ async function saveToSheets(){
   _saving=true; _pendingSave=false;
   setSyncSt("⟳ Menyimpan...","#3266ad");
   try{
-    // Trim videos ke max 10 per channel sebelum save — cegah Sheets cell limit (50k char)
-    const channelsTrimmed = channels.map(ch=>{
-      if(!ch.videos||ch.videos.length<=10)return ch;
-      // Simpan 10 video terbaru
-      const sorted=[...ch.videos].sort((a,b)=>new Date(b.publishedAt)-new Date(a.publishedAt));
-      return {...ch, videos:sorted.slice(0,10)};
-    });
-    const payload = JSON.stringify({channels:channelsTrimmed,apiKeys,arSettings,lastYTRefresh,updatedAt:new Date().toISOString()});
-    // Warn kalau payload masih besar
-    if(payload.length>40000) console.warn("[YTMon] Payload besar:",payload.length,"chars");
+    // Pakai Google Drive — tidak ada batas ukuran file, simpan semua data penuh
+    const payload = JSON.stringify({channels,apiKeys,arSettings,lastYTRefresh,updatedAt:new Date().toISOString()});
     await fetch(SHEETS_URL,{method:"POST",body:payload,headers:{"Content-Type":"text/plain"}});
     setSyncSt("✓ Tersimpan — "+fmtDtT(new Date().toISOString()),"var(--ok)");
   }catch(e){setSyncSt("⚠ Gagal simpan: "+e.message,"var(--danger)");}
