@@ -447,6 +447,8 @@ function doLogout(){
 
 // ── Google Sheets sync ────────────────────────────────────
 async function loadFromSheets(){
+  // Jangan load dari Sheets kalau sedang ada proses save — hindari overwrite data baru
+  if(_saving||_pendingSave){ setSyncSt("⟳ Sync ditunda (sedang menyimpan)...","#3266ad"); return; }
   setSyncSt("⟳ Memuat data dari Sheets...","#3266ad");
   try{
     const r=await fetch(SHEETS_URL+"?t="+Date.now());const d=await r.json();
@@ -461,12 +463,33 @@ async function loadFromSheets(){
     checkAutoRefresh();
   }catch(e){setSyncSt("⚠ Gagal muat: "+e.message,"var(--danger)");}
 }
+// ── Save queue: cegah race condition rapid-add ─────────────
+let _saveTimer = null;
+let _saving = false;
+let _pendingSave = false;
+
 async function saveToSheets(){
+  // Kalau sedang ada save berjalan, tandai pending dan tunggu
+  if(_saving){ _pendingSave=true; return; }
+  _saving=true; _pendingSave=false;
   setSyncSt("⟳ Menyimpan...","#3266ad");
   try{
-    await fetch(SHEETS_URL,{method:"POST",body:JSON.stringify({channels,apiKeys,arSettings,lastYTRefresh,updatedAt:new Date().toISOString()}),headers:{"Content-Type":"text/plain"}});
+    // Trim videos ke max 10 per channel sebelum save — cegah Sheets cell limit (50k char)
+    const channelsTrimmed = channels.map(ch=>{
+      if(!ch.videos||ch.videos.length<=10)return ch;
+      // Simpan 10 video terbaru
+      const sorted=[...ch.videos].sort((a,b)=>new Date(b.publishedAt)-new Date(a.publishedAt));
+      return {...ch, videos:sorted.slice(0,10)};
+    });
+    const payload = JSON.stringify({channels:channelsTrimmed,apiKeys,arSettings,lastYTRefresh,updatedAt:new Date().toISOString()});
+    // Warn kalau payload masih besar
+    if(payload.length>40000) console.warn("[YTMon] Payload besar:",payload.length,"chars");
+    await fetch(SHEETS_URL,{method:"POST",body:payload,headers:{"Content-Type":"text/plain"}});
     setSyncSt("✓ Tersimpan — "+fmtDtT(new Date().toISOString()),"var(--ok)");
   }catch(e){setSyncSt("⚠ Gagal simpan: "+e.message,"var(--danger)");}
+  _saving=false;
+  // Kalau ada yang pending, jalankan sekali lagi
+  if(_pendingSave){ _pendingSave=false; saveToSheets(); }
 }
 function setSyncSt(m,c){const el=document.getElementById("sync-st");if(!el)return;el.style.color=c;el.textContent=m;}
 
@@ -782,12 +805,13 @@ function render(){
   document.getElementById("list").innerHTML=shown.length===0?`<div class="empty"><div class="ico">📺</div><h3>${channels.length===0?"Belum ada channel":"Tidak ada channel di filter ini"}</h3></div>`:shown.map(renderRow).join("");
   renderApiKeys();updateApiSum();
 }
-// Sync dari Sheets setiap 2 menit (cek data tim lain)
+// Sync dari Sheets setiap 5 menit (cek data tim lain) — diperpanjang dari 2 menit
+// agar tidak overwrite saat user sedang aktif tambah channel
 setInterval(()=>{
   if(document.getElementById("app").style.display!=="none"){
     loadFromSheets();
   }
-},120000);
+},300000);
 // Cek auto-refresh setiap menit (untuk trigger tepat waktu kalau tab sudah terbuka)
 setInterval(()=>{
   if(document.getElementById("app").style.display!=="none"){
