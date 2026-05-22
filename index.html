@@ -110,8 +110,16 @@ header{position:sticky;top:0;background:var(--bg);z-index:20;padding:12px 0 10px
 .tag-sm{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--surf2);color:var(--txt3);border:1px solid var(--bdr);white-space:nowrap}
 .tag-urg{background:#fff0f0;color:var(--danger);border-color:#ffcdd2;font-weight:700}
 .tag-ok{background:var(--g-bg);color:var(--g-txt);border-color:#c5e1a5}
-.tag-warn{background:#fff8e1;color:#e65100;border-color:#ffcc02;font-weight:700}
-@media(prefers-color-scheme:dark){.tag-warn{background:#2d2000;color:#ffb300;border-color:#7a5c00}}
+.tag-day-ok{background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7;font-weight:700}
+.tag-day-warn{background:#fff8e1;color:#e65100;border-color:#ffcc02;font-weight:700}
+.tag-day-danger{background:#fff0f0;color:#c0392b;border-color:#ffcdd2;font-weight:700}
+.tag-manual{background:#f3e5f5;color:#6a1b9a;border-color:#ce93d8;font-weight:700;font-size:9px}
+@media(prefers-color-scheme:dark){
+  .tag-day-ok{background:#1b3a1b;color:#81c784;border-color:#2e7d32}
+  .tag-day-warn{background:#2d2000;color:#ffb300;border-color:#7a5c00}
+  .tag-day-danger{background:#2d1010;color:#ff8a80;border-color:#7b2020}
+  .tag-manual{background:#2d1040;color:#ce93d8;border-color:#6a1b9a}
+}
 .row-metric{text-align:right;flex-shrink:0;min-width:80px}
 .row-metric .val{font-size:13px;font-weight:700}.row-metric .lbl{font-size:10px;color:var(--txt3)}
 .row-exp-btn{width:24px;height:24px;border-radius:50%;background:var(--surf2);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .2s;font-size:11px;color:var(--txt3)}
@@ -651,7 +659,12 @@ function showAddErr(m){document.getElementById("add-err").innerHTML=`<div class=
 async function refreshOne(id){
   if(!apiKeys.length)return;const ch=channels.find(c=>c.id===id);if(!ch)return;
   loading[id]=true;render();
-  try{const data=await fetchYT(ch.ytId);const ns=detectStage(data);let sd=ch.stageDate;if(ns!==ch.stage)sd=today();const nfv=firstVid({videos:data.videos});const nfd=nfv?localDate(nfv):ch.firstVideoDate;channels=channels.map(c=>c.id===id?{...c,...data,stage:ns,stageDate:sd,firstVideoDate:nfd}:c);await saveToSheets();}
+  try{const data=await fetchYT(ch.ytId);
+    const ns=ch.stageOverride?ch.stage:detectStage(data);
+    let sd=ch.stageDate;if(ns!==ch.stage)sd=today();
+    const nfv=firstVid({videos:data.videos});const nfd=nfv?localDate(nfv):ch.firstVideoDate;
+    channels=channels.map(c=>c.id===id?{...c,...data,stage:ns,stageDate:sd,firstVideoDate:nfd,stageOverride:ch.stageOverride}:c);
+    await saveToSheets();}
   catch(e){alert("Gagal refresh:\n"+e.message);}
   loading[id]=false;render();
 }
@@ -667,7 +680,8 @@ async function refreshAll(auto=false){
   setSyncSt("✓ YouTube di-refresh — "+fmtDtT(new Date().toISOString()),"var(--ok)");
   renderArBar();
 }
-function changeStage(id,s){channels=channels.map(c=>c.id===id?{...c,stage:parseInt(s),stageDate:today()}:c);saveToSheets();render();}
+function changeStage(id,s){channels=channels.map(c=>c.id===id?{...c,stage:parseInt(s),stageDate:today(),stageOverride:true}:c);saveToSheets();render();}
+function resetStageOverride(id){channels=channels.map(c=>c.id===id?{...c,stageOverride:false}:c);saveToSheets();render();}
 function updateNote(id,v){channels=channels.map(c=>c.id===id?{...c,notes:v}:c);saveToSheets();}
 function removeChannel(id){if(!confirm("Hapus channel ini?"))return;channels=channels.filter(c=>c.id!==id);expanded.delete(id);saveToSheets();render();}
 function toggleExpand(id){expanded.has(id)?expanded.delete(id):expanded.add(id);render();}
@@ -740,6 +754,15 @@ function renderRow(ch){
     else stTag=`<span class="tag-sm tag-ok">✓ Upload hari ini</span>`;
   }
   const dayNum=dayFromFirst(ch);
+  // Warna day badge untuk Tahap 1
+  let dayBadgeClass="tag-sm";
+  if(ch.stage===1&&dayNum>0){
+    const videosDone=ch.videoCount||0;
+    if(dayNum>=6&&videosDone>=6)dayBadgeClass="tag-sm tag-day-ok";       // ✓ Selesai
+    else if(dayNum>=6)dayBadgeClass="tag-sm tag-day-danger";              // ⚠ Telat
+    else if(dayNum>=4)dayBadgeClass="tag-sm tag-day-warn";               // ⚡ Mendekati
+  }
+  const manualBadge=ch.stageOverride?`<span class="tag-sm tag-manual">✎ Manual</span>`:"";
   const s2info=ch.stage===2?stage2Info(ch):null;
   let detail="";
   if(exp){
@@ -786,9 +809,9 @@ function renderRow(ch){
       :near2banner
 ;
     let vh="";if(ch.stage===1&&ch.videos?.length){const sv=[...ch.videos].sort((a,b)=>new Date(a.publishedAt)-new Date(b.publishedAt));vh=`<div class="vid-hd" style="margin-top:10px">Video rilis</div>`+sv.slice(0,6).map((v,i)=>`<div class="vid-item"><span class="vid-n">${i+1}</span><span class="vid-title"><a href="https://youtu.be/${v.id}" target="_blank">${v.title}</a>${i===0?'<span class="first-badge" style="margin-left:4px">PERTAMA</span>':""}</span><span class="vid-views" style="color:${v.views>=100?"var(--ok)":v.views>=50?"var(--warn)":"var(--txt2)"}">${fmt(v.views)}</span><span class="vid-date">${fmtDtS(v.publishedAt)}</span></div>`).join("");}
-    detail=`<div class="row-detail">${ub}<div class="d-grid"><div class="metric"><div class="lbl">Subscriber</div><div class="val">${fmt(ch.subscribers)}</div>${ch.stage===2&&ch.subscribers?`<div class="hint">${Math.round((ch.subscribers/500)*100)}% dari 500</div>`:""}</div><div class="metric"><div class="lbl">Total Video</div><div class="val">${fmt(ch.videoCount)}</div>${ch.stage===1?`<div class="hint">${Math.min(ch.videoCount||0,6)}/6</div>`:""}${ch.stage===2?`<div class="hint ${urgent?"hint-warn":""}">${urgent?"⚠ Perlu upload":"Upload rutin"}</div>`:""}</div><div class="metric"><div class="lbl">${ch.stage===2?"Upload Terakhir":"Avg Views"}</div><div class="val" style="font-size:${ch.stage===2?"13px":"17px"};padding-top:${ch.stage===2?"3px":"0"}">${ch.stage===2?(lastUpload(ch)?fmtDtS(lastUpload(ch)):"—"):fmt(avg)}</div>${ch.stage===1&&avg!==null?`<div class="hint ${avg>=(arSettings.stage2Threshold||100)?"hint-ok":avg>=(arSettings.warnThreshold||70)?"hint-warn":""}">${avg>=(arSettings.stage2Threshold||100)?"✓ Layak Tahap 2":avg>=(arSettings.warnThreshold||70)?"⚡ Mendekati":"masih rendah"}</div>`:""}${ch.stage===2?`<div class="hint ${urgent?"hint-warn":"hint-ok"}">${urgent?"Belum hari ini":"✓ Hari ini"}</div>`:""}</div></div><div class="bar-wrap"><div class="bar-row"><span>${pLbl}</span><span style="font-weight:700">${Math.round(pct)}%</span></div><div class="bar"><div class="bar-fill fill-${ch.stage}" style="width:${pct}%"></div></div><div class="goal-txt">${pGoal}</div>${vh}</div><div class="si-box s${ch.stage}">${si[ch.stage]}</div><div class="d-foot"><span class="foot-lbl">Pindah tahap:</span><select class="stage-sel" onchange="changeStage('${ch.id}',this.value)"><option value="1" ${ch.stage===1?"selected":""}>Tahap 1</option><option value="2" ${ch.stage===2?"selected":""}>Tahap 2</option><option value="3" ${ch.stage===3?"selected":""}>Tahap 3</option></select><input class="note-inp" placeholder="Catatan..." value="${(ch.notes||"").replace(/"/g,"&quot;")}" onchange="updateNote('${ch.id}',this.value)"><span class="foot-time">${ch.lastFetched?"Update: "+fmtDtT(ch.lastFetched):"Belum di-refresh"}</span></div></div>`;
+    detail=`<div class="row-detail">${ub}<div class="d-grid"><div class="metric"><div class="lbl">Subscriber</div><div class="val">${fmt(ch.subscribers)}</div>${ch.stage===2&&ch.subscribers?`<div class="hint">${Math.round((ch.subscribers/500)*100)}% dari 500</div>`:""}</div><div class="metric"><div class="lbl">Total Video</div><div class="val">${fmt(ch.videoCount)}</div>${ch.stage===1?`<div class="hint">${Math.min(ch.videoCount||0,6)}/6</div>`:""}${ch.stage===2?`<div class="hint ${urgent?"hint-warn":""}">${urgent?"⚠ Perlu upload":"Upload rutin"}</div>`:""}</div><div class="metric"><div class="lbl">${ch.stage===2?"Upload Terakhir":"Avg Views"}</div><div class="val" style="font-size:${ch.stage===2?"13px":"17px"};padding-top:${ch.stage===2?"3px":"0"}">${ch.stage===2?(lastUpload(ch)?fmtDtS(lastUpload(ch)):"—"):fmt(avg)}</div>${ch.stage===1&&avg!==null?`<div class="hint ${avg>=(arSettings.stage2Threshold||100)?"hint-ok":avg>=(arSettings.warnThreshold||70)?"hint-warn":""}">${avg>=(arSettings.stage2Threshold||100)?"✓ Layak Tahap 2":avg>=(arSettings.warnThreshold||70)?"⚡ Mendekati":"masih rendah"}</div>`:""}${ch.stage===2?`<div class="hint ${urgent?"hint-warn":"hint-ok"}">${urgent?"Belum hari ini":"✓ Hari ini"}</div>`:""}</div></div><div class="bar-wrap"><div class="bar-row"><span>${pLbl}</span><span style="font-weight:700">${Math.round(pct)}%</span></div><div class="bar"><div class="bar-fill fill-${ch.stage}" style="width:${pct}%"></div></div><div class="goal-txt">${pGoal}</div>${vh}</div><div class="si-box s${ch.stage}">${si[ch.stage]}</div><div class="d-foot"><span class="foot-lbl">Pindah tahap:</span><select class="stage-sel" onchange="changeStage('${ch.id}',this.value)"><option value="1" ${ch.stage===1?"selected":""}>Tahap 1</option><option value="2" ${ch.stage===2?"selected":""}>Tahap 2</option><option value="3" ${ch.stage===3?"selected":""}>Tahap 3</option></select>${ch.stageOverride?`<button class="btn btn-sm" onclick="resetStageOverride('${ch.id}')" style="color:#6a1b9a;border-color:#ce93d8;font-size:10px" title="Klik agar tahap kembali ditentukan otomatis saat refresh">↺ Reset ke auto</button>`:""}<input class="note-inp" placeholder="Catatan..." value="${(ch.notes||"").replace(/"/g,"&quot;")}" onchange="updateNote('${ch.id}',this.value)"><span class="foot-time">${ch.lastFetched?"Update: "+fmtDtT(ch.lastFetched):"Belum di-refresh"}</span></div></div>`;
   }
-  return `<div class="ch-row${urgent||s1late?" urgent":near2?" near2":""}${exp?" expanded":""}" id="row-${ch.id}"><div class="row-head" onclick="toggleExpand('${ch.id}')"><div class="row-av">${ch.thumbnail?`<img src="${ch.thumbnail}" alt="">`:ini}</div><span class="row-name">${ch.name||ch.inputValue}</span><div class="row-badges"><span class="badge badge-${ch.stage}">Tahap ${ch.stage}</span><span class="tag-sm">Hari ke-${dayNum}</span>${stTag}</div><div class="row-metric"><div class="val">${rmVal}</div><div class="lbl">${rmLbl}</div></div><div class="row-actions" onclick="event.stopPropagation()">${apiKeys.length?`<button class="btn btn-sm btn-icon" onclick="refreshOne('${ch.id}')">${loading[ch.id]?'<span class="spin">↻</span>':"↻"}</button>`:""}<a href="${ytUrl}" target="_blank" class="btn btn-sm btn-icon" style="text-decoration:none">↗</a><button class="btn btn-sm btn-icon" onclick="removeChannel('${ch.id}')" style="color:var(--danger)">✕</button></div><div class="row-exp-btn">▼</div></div>${detail}</div>`;
+  return `<div class="ch-row${urgent||s1late?" urgent":near2?" near2":""}${exp?" expanded":""}" id="row-${ch.id}"><div class="row-head" onclick="toggleExpand('${ch.id}')"><div class="row-av">${ch.thumbnail?`<img src="${ch.thumbnail}" alt="">`:ini}</div><span class="row-name">${ch.name||ch.inputValue}</span><div class="row-badges"><span class="badge badge-${ch.stage}">Tahap ${ch.stage}</span><span class="${dayBadgeClass}">${ch.stage===1&&dayNum>=6&&(ch.videoCount||0)<6?`⚠ Hari ke-${dayNum}`:ch.stage===1&&dayNum>=4&&dayNum<6?`⚡ Hari ke-${dayNum}`:ch.stage===1&&dayNum>=6&&(ch.videoCount||0)>=6?`✓ Hari ke-${dayNum}`:`Hari ke-${dayNum}`}</span>${manualBadge}${stTag}</div><div class="row-metric"><div class="val">${rmVal}</div><div class="lbl">${rmLbl}</div></div><div class="row-actions" onclick="event.stopPropagation()">${apiKeys.length?`<button class="btn btn-sm btn-icon" onclick="refreshOne('${ch.id}')">${loading[ch.id]?'<span class="spin">↻</span>':"↻"}</button>`:""}<a href="${ytUrl}" target="_blank" class="btn btn-sm btn-icon" style="text-decoration:none">↗</a><button class="btn btn-sm btn-icon" onclick="removeChannel('${ch.id}')" style="color:var(--danger)">✕</button></div><div class="row-exp-btn">▼</div></div>${detail}</div>`;
 }
 function render(){
   document.getElementById("stats").innerHTML=`<div class="stat"><div class="lbl">Total</div><div class="num">${channels.length}</div></div><div class="stat s1"><div class="lbl">Tahap 1</div><div class="num">${cnt(1)}</div></div><div class="stat s2"><div class="lbl">Tahap 2</div><div class="num">${cnt(2)}</div></div><div class="stat s3"><div class="lbl">Tahap 3</div><div class="num">${cnt(3)}</div></div>`;
