@@ -126,6 +126,8 @@ header{position:sticky;top:0;background:var(--bg);z-index:20;padding:12px 0 10px
 .tag-day-warn{background:#fff8e1;color:#e65100;border-color:#ffcc02;font-weight:700}
 .tag-day-danger{background:#fff0f0;color:#c0392b;border-color:#ffcdd2;font-weight:700}
 .tag-manual{background:#f3e5f5;color:#6a1b9a;border-color:#ce93d8;font-weight:700;font-size:9px}
+.downgrade-note{font-size:10px;color:#e65100;background:#fff8e1;border:1px solid #ffcc02;border-radius:4px;padding:2px 7px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+@media(prefers-color-scheme:dark){.downgrade-note{background:#2d2000;color:#ffb300;border-color:#7a5c00}}
 @media(prefers-color-scheme:dark){
   .tag-day-ok{background:#1b3a1b;color:#81c784;border-color:#2e7d32}
   .tag-day-warn{background:#2d2000;color:#ffb300;border-color:#7a5c00}
@@ -681,10 +683,21 @@ async function refreshOne(id,skipSave=false){
   if(!apiKeys.length)return;const ch=channels.find(c=>c.id===id);if(!ch)return;
   loading[id]=true;render();
   try{const data=await fetchYT(ch.ytId);
-    const ns=ch.stageOverride?ch.stage:detectStage(data);
+    let ns=ch.stageOverride?ch.stage:detectStage(data);
+    let downgradeNote=ch.downgradeNote||null;
+    // Jangan boleh turun tahap secara otomatis
+    if(!ch.stageOverride&&ns<ch.stage){
+      const avg=avgViews(data.videos);
+      const thresh=arSettings.stage2Threshold||100;
+      if(ch.stage===2&&ns===1)downgradeNote=`Avg views turun ke ${avg||0} (di bawah threshold ${thresh})`;
+      else if(ch.stage===3&&ns<=2)downgradeNote=`Subscriber turun ke ${data.subscribers||0} (di bawah 500)`;
+      ns=ch.stage; // pertahankan tahap saat ini
+    } else if(ns>=ch.stage){
+      downgradeNote=null; // naik tahap, hapus catatan lama
+    }
     let sd=ch.stageDate;if(ns!==ch.stage)sd=today();
     const nfv=firstVid({videos:data.videos});const nfd=nfv?localDate(nfv):ch.firstVideoDate;
-    channels=channels.map(c=>c.id===id?{...c,...data,stage:ns,stageDate:sd,firstVideoDate:nfd,stageOverride:ch.stageOverride}:c);
+    channels=channels.map(c=>c.id===id?{...c,...data,stage:ns,stageDate:sd,firstVideoDate:nfd,stageOverride:ch.stageOverride,downgradeNote}:c);
     if(!skipSave)await saveToSheets();}
   catch(e){alert("Gagal refresh:\n"+e.message);}
   loading[id]=false;render();
@@ -790,6 +803,7 @@ function renderRow(ch){
     else if(dayNum>=4)dayBadgeClass="tag-sm tag-day-warn";               // ⚡ Mendekati
   }
   const manualBadge=ch.stageOverride?`<span class="tag-sm tag-manual">✎ Manual</span>`:"";
+  const downgradeBadge=ch.downgradeNote?`<span class="downgrade-note" title="${ch.downgradeNote}">⚠ ${ch.downgradeNote}</span>`:"";
   const s2info=ch.stage===2?stage2Info(ch):null;
   let detail="";
   if(exp){
@@ -853,7 +867,7 @@ function renderRow(ch){
   } else if(ch.stage===1&&dayNum>=6&&(ch.videoCount||0)>=6&&avg!==null&&avg>=(arSettings.warnThreshold||70)){
     notifStrip=`<div class="row-notif-strip strip-yellow">⚡ Avg views ${avg} — mendekati syarat Tahap 2</div>`;
   }
-  return `<div class="ch-row${urgent||s1late?" urgent":near2?" near2":""}${exp?" expanded":""}" id="row-${ch.id}"><div class="row-head" onclick="toggleExpand('${ch.id}')"><div class="row-av">${ch.thumbnail?`<img src="${ch.thumbnail}" alt="">`:ini}</div><span class="row-name">${ch.name||ch.inputValue}</span><div class="row-badges"><span class="badge badge-${ch.stage}">Tahap ${ch.stage}</span><span class="${dayBadgeClass}">${ch.stage===1&&dayNum>=6&&(ch.videoCount||0)<6?`⚠ Hari ke-${dayNum}`:ch.stage===1&&dayNum>=4&&dayNum<6?`⚡ Hari ke-${dayNum}`:ch.stage===1&&dayNum>=6&&(ch.videoCount||0)>=6?`✓ Hari ke-${dayNum}`:`Hari ke-${dayNum}`}</span>${manualBadge}${stTag}</div><div class="row-metric"><div class="val">${rmVal}</div><div class="lbl">${rmLbl}</div></div><div class="row-actions" onclick="event.stopPropagation()">${apiKeys.length?`<button class="btn btn-sm btn-icon" onclick="refreshOne('${ch.id}')">${loading[ch.id]?'<span class="spin">↻</span>':"↻"}</button>`:""}<a href="${ytUrl}" target="_blank" class="btn btn-sm btn-icon" style="text-decoration:none">↗</a><button class="btn btn-sm btn-icon" onclick="removeChannel('${ch.id}')" style="color:var(--danger)">✕</button></div><div class="row-exp-btn">▼</div></div>${notifStrip}${detail}</div>`;
+  return `<div class="ch-row${urgent||s1late?" urgent":near2?" near2":""}${exp?" expanded":""}" id="row-${ch.id}"><div class="row-head" onclick="toggleExpand('${ch.id}')"><div class="row-av">${ch.thumbnail?`<img src="${ch.thumbnail}" alt="">`:ini}</div><span class="row-name">${ch.name||ch.inputValue}</span><div class="row-badges"><span class="badge badge-${ch.stage}">Tahap ${ch.stage}</span><span class="${dayBadgeClass}">${ch.stage===1&&dayNum>=6&&(ch.videoCount||0)<6?`⚠ Hari ke-${dayNum}`:ch.stage===1&&dayNum>=4&&dayNum<6?`⚡ Hari ke-${dayNum}`:ch.stage===1&&dayNum>=6&&(ch.videoCount||0)>=6?`✓ Hari ke-${dayNum}`:`Hari ke-${dayNum}`}</span>${manualBadge}${downgradeBadge}${stTag}</div><div class="row-metric"><div class="val">${rmVal}</div><div class="lbl">${rmLbl}</div></div><div class="row-actions" onclick="event.stopPropagation()">${apiKeys.length?`<button class="btn btn-sm btn-icon" onclick="refreshOne('${ch.id}')">${loading[ch.id]?'<span class="spin">↻</span>':"↻"}</button>`:""}<a href="${ytUrl}" target="_blank" class="btn btn-sm btn-icon" style="text-decoration:none">↗</a><button class="btn btn-sm btn-icon" onclick="removeChannel('${ch.id}')" style="color:var(--danger)">✕</button></div><div class="row-exp-btn">▼</div></div>${notifStrip}${detail}</div>`;
 }
 function render(){
   document.getElementById("stats").innerHTML=`<div class="stat"><div class="lbl">Total</div><div class="num">${channels.length}</div></div><div class="stat s1"><div class="lbl">Tahap 1</div><div class="num">${cnt(1)}</div></div><div class="stat s2"><div class="lbl">Tahap 2</div><div class="num">${cnt(2)}</div></div><div class="stat s3"><div class="lbl">Tahap 3</div><div class="num">${cnt(3)}</div></div>`;
