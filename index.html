@@ -677,7 +677,7 @@ function setAddLoad(on,txt=""){document.getElementById("fetch-st").classList[on?
 function showAddErr(m){document.getElementById("add-err").innerHTML=`<div class="m-err">⚠ ${m}</div>`;setAddLoad(false);}
 
 // ── Refresh ───────────────────────────────────────────────
-async function refreshOne(id){
+async function refreshOne(id,skipSave=false){
   if(!apiKeys.length)return;const ch=channels.find(c=>c.id===id);if(!ch)return;
   loading[id]=true;render();
   try{const data=await fetchYT(ch.ytId);
@@ -685,7 +685,7 @@ async function refreshOne(id){
     let sd=ch.stageDate;if(ns!==ch.stage)sd=today();
     const nfv=firstVid({videos:data.videos});const nfd=nfv?localDate(nfv):ch.firstVideoDate;
     channels=channels.map(c=>c.id===id?{...c,...data,stage:ns,stageDate:sd,firstVideoDate:nfd,stageOverride:ch.stageOverride}:c);
-    await saveToSheets();}
+    if(!skipSave)await saveToSheets();}
   catch(e){alert("Gagal refresh:\n"+e.message);}
   loading[id]=false;render();
 }
@@ -699,7 +699,7 @@ async function refreshAll(auto=false){
     const pct=Math.round((i/total)*100);
     const bar="█".repeat(Math.round(pct/10))+"░".repeat(10-Math.round(pct/10));
     setSyncSt(`⟳ Refresh ${i+1}/${total} · ${pct}% [${bar}] — ${ch.name||ch.inputValue}...`,"#3266ad");
-    await refreshOne(ch.id);
+    await refreshOne(ch.id, true);
   }
   lastYTRefresh=today();
   await saveToSheets();
