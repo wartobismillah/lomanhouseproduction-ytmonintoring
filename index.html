@@ -98,8 +98,18 @@ header{position:sticky;top:0;background:var(--bg);z-index:20;padding:12px 0 10px
 .ftab{padding:6px 14px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--txt2);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit}
 .ftab:hover{color:var(--txt)}.ftab.active{color:var(--txt);border-bottom-color:var(--red);font-weight:600}
 .ch-row{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:6px;box-shadow:var(--shd);overflow:hidden}
-.ch-row:hover{border-color:var(--bdr2)}.ch-row.urgent{border-left:3px solid var(--danger)}
-.ch-row.near2{border-left:3px solid #ffb300}.ch-row.expanded{border-color:var(--bdr2)}
+.ch-row:hover{border-color:var(--bdr2)}
+.ch-row.urgent{border-left:4px solid var(--danger);background:rgba(192,57,43,0.04)}
+.ch-row.urgent .row-head{background:rgba(192,57,43,0.03)}
+.ch-row.near2{border-left:4px solid #ffb300;background:rgba(255,179,0,0.04)}
+.ch-row.near2 .row-head{background:rgba(255,179,0,0.03)}
+.ch-row.expanded{border-color:var(--bdr2)}
+@media(prefers-color-scheme:dark){
+  .ch-row.urgent{background:rgba(255,100,80,0.06)}.ch-row.urgent .row-head{background:rgba(255,100,80,0.04)}
+  .ch-row.near2{background:rgba(255,179,0,0.06)}.ch-row.near2 .row-head{background:rgba(255,179,0,0.04)}
+}
+@keyframes pulse-red{0%,100%{box-shadow:0 0 0 0 rgba(192,57,43,0.35)}60%{box-shadow:0 0 0 5px rgba(192,57,43,0)}}
+@keyframes pulse-yellow{0%,100%{box-shadow:0 0 0 0 rgba(255,179,0,0.4)}60%{box-shadow:0 0 0 5px rgba(255,179,0,0)}}
 .row-head{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none}
 .row-av{width:34px;height:34px;border-radius:50%;background:var(--surf2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--txt2);overflow:hidden;border:1px solid var(--bdr)}
 .row-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
@@ -108,8 +118,10 @@ header{position:sticky;top:0;background:var(--bg);z-index:20;padding:12px 0 10px
 .badge{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
 .badge-1{background:var(--b-bg);color:var(--b-txt)}.badge-2{background:var(--g-bg);color:var(--g-txt)}.badge-3{background:var(--t-bg);color:var(--t-txt)}
 .tag-sm{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--surf2);color:var(--txt3);border:1px solid var(--bdr);white-space:nowrap}
-.tag-urg{background:#fff0f0;color:var(--danger);border-color:#ffcdd2;font-weight:700}
-.tag-ok{background:var(--g-bg);color:var(--g-txt);border-color:#c5e1a5}
+.tag-urg{background:#c0392b;color:#fff;border-color:#c0392b;font-weight:700;font-size:11px;padding:3px 8px;border-radius:6px;animation:pulse-red 2s infinite}
+.tag-ok{background:var(--g-bg);color:var(--g-txt);border-color:#c5e1a5;font-size:11px;padding:3px 8px}
+.tag-warn{background:#e65100;color:#fff;border-color:#e65100;font-weight:700;font-size:11px;padding:3px 8px;border-radius:6px;animation:pulse-yellow 2s infinite}
+@media(prefers-color-scheme:dark){.tag-warn{background:#e65100;color:#fff;border-color:#e65100}}
 .tag-day-ok{background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7;font-weight:700}
 .tag-day-warn{background:#fff8e1;color:#e65100;border-color:#ffcc02;font-weight:700}
 .tag-day-danger{background:#fff0f0;color:#c0392b;border-color:#ffcdd2;font-weight:700}
@@ -125,6 +137,15 @@ header{position:sticky;top:0;background:var(--bg);z-index:20;padding:12px 0 10px
 .row-exp-btn{width:24px;height:24px;border-radius:50%;background:var(--surf2);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .2s;font-size:11px;color:var(--txt3)}
 .ch-row.expanded .row-exp-btn{transform:rotate(180deg)}
 .row-actions{display:flex;gap:5px;flex-shrink:0}
+.row-notif-strip{font-size:11px;font-weight:600;padding:5px 14px;display:flex;align-items:center;gap:6px;border-top:1px solid rgba(0,0,0,0.06)}
+.row-notif-strip.strip-red{background:rgba(192,57,43,0.08);color:#c0392b}
+.row-notif-strip.strip-yellow{background:rgba(255,179,0,0.1);color:#b37700}
+.row-notif-strip.strip-green{background:rgba(46,125,50,0.08);color:#2e7d32}
+@media(prefers-color-scheme:dark){
+  .row-notif-strip.strip-red{background:rgba(255,100,80,0.1);color:#ff8a80}
+  .row-notif-strip.strip-yellow{background:rgba(255,179,0,0.1);color:#ffcc02}
+  .row-notif-strip.strip-green{background:rgba(46,125,50,0.1);color:#81c784}
+}
 .row-detail{display:none;padding:0 14px 14px;border-top:1px solid var(--bdr)}
 .ch-row.expanded .row-detail{display:block}
 .d-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
@@ -811,7 +832,22 @@ function renderRow(ch){
     let vh="";if(ch.stage===1&&ch.videos?.length){const sv=[...ch.videos].sort((a,b)=>new Date(a.publishedAt)-new Date(b.publishedAt));vh=`<div class="vid-hd" style="margin-top:10px">Video rilis</div>`+sv.slice(0,6).map((v,i)=>`<div class="vid-item"><span class="vid-n">${i+1}</span><span class="vid-title"><a href="https://youtu.be/${v.id}" target="_blank">${v.title}</a>${i===0?'<span class="first-badge" style="margin-left:4px">PERTAMA</span>':""}</span><span class="vid-views" style="color:${v.views>=100?"var(--ok)":v.views>=50?"var(--warn)":"var(--txt2)"}">${fmt(v.views)}</span><span class="vid-date">${fmtDtS(v.publishedAt)}</span></div>`).join("");}
     detail=`<div class="row-detail">${ub}<div class="d-grid"><div class="metric"><div class="lbl">Subscriber</div><div class="val">${fmt(ch.subscribers)}</div>${ch.stage===2&&ch.subscribers?`<div class="hint">${Math.round((ch.subscribers/500)*100)}% dari 500</div>`:""}</div><div class="metric"><div class="lbl">Total Video</div><div class="val">${fmt(ch.videoCount)}</div>${ch.stage===1?`<div class="hint">${Math.min(ch.videoCount||0,6)}/6</div>`:""}${ch.stage===2?`<div class="hint ${urgent?"hint-warn":""}">${urgent?"⚠ Perlu upload":"Upload rutin"}</div>`:""}</div><div class="metric"><div class="lbl">${ch.stage===2?"Upload Terakhir":"Avg Views"}</div><div class="val" style="font-size:${ch.stage===2?"13px":"17px"};padding-top:${ch.stage===2?"3px":"0"}">${ch.stage===2?(lastUpload(ch)?fmtDtS(lastUpload(ch)):"—"):fmt(avg)}</div>${ch.stage===1&&avg!==null?`<div class="hint ${avg>=(arSettings.stage2Threshold||100)?"hint-ok":avg>=(arSettings.warnThreshold||70)?"hint-warn":""}">${avg>=(arSettings.stage2Threshold||100)?"✓ Layak Tahap 2":avg>=(arSettings.warnThreshold||70)?"⚡ Mendekati":"masih rendah"}</div>`:""}${ch.stage===2?`<div class="hint ${urgent?"hint-warn":"hint-ok"}">${urgent?"Belum hari ini":"✓ Hari ini"}</div>`:""}</div></div><div class="bar-wrap"><div class="bar-row"><span>${pLbl}</span><span style="font-weight:700">${Math.round(pct)}%</span></div><div class="bar"><div class="bar-fill fill-${ch.stage}" style="width:${pct}%"></div></div><div class="goal-txt">${pGoal}</div>${vh}</div><div class="si-box s${ch.stage}">${si[ch.stage]}</div><div class="d-foot"><span class="foot-lbl">Pindah tahap:</span><select class="stage-sel" onchange="changeStage('${ch.id}',this.value)"><option value="1" ${ch.stage===1?"selected":""}>Tahap 1</option><option value="2" ${ch.stage===2?"selected":""}>Tahap 2</option><option value="3" ${ch.stage===3?"selected":""}>Tahap 3</option></select>${ch.stageOverride?`<button class="btn btn-sm" onclick="resetStageOverride('${ch.id}')" style="color:#6a1b9a;border-color:#ce93d8;font-size:10px" title="Klik agar tahap kembali ditentukan otomatis saat refresh">↺ Reset ke auto</button>`:""}<input class="note-inp" placeholder="Catatan..." value="${(ch.notes||"").replace(/"/g,"&quot;")}" onchange="updateNote('${ch.id}',this.value)"><span class="foot-time">${ch.lastFetched?"Update: "+fmtDtT(ch.lastFetched):"Belum di-refresh"}</span></div></div>`;
   }
-  return `<div class="ch-row${urgent||s1late?" urgent":near2?" near2":""}${exp?" expanded":""}" id="row-${ch.id}"><div class="row-head" onclick="toggleExpand('${ch.id}')"><div class="row-av">${ch.thumbnail?`<img src="${ch.thumbnail}" alt="">`:ini}</div><span class="row-name">${ch.name||ch.inputValue}</span><div class="row-badges"><span class="badge badge-${ch.stage}">Tahap ${ch.stage}</span><span class="${dayBadgeClass}">${ch.stage===1&&dayNum>=6&&(ch.videoCount||0)<6?`⚠ Hari ke-${dayNum}`:ch.stage===1&&dayNum>=4&&dayNum<6?`⚡ Hari ke-${dayNum}`:ch.stage===1&&dayNum>=6&&(ch.videoCount||0)>=6?`✓ Hari ke-${dayNum}`:`Hari ke-${dayNum}`}</span>${manualBadge}${stTag}</div><div class="row-metric"><div class="val">${rmVal}</div><div class="lbl">${rmLbl}</div></div><div class="row-actions" onclick="event.stopPropagation()">${apiKeys.length?`<button class="btn btn-sm btn-icon" onclick="refreshOne('${ch.id}')">${loading[ch.id]?'<span class="spin">↻</span>':"↻"}</button>`:""}<a href="${ytUrl}" target="_blank" class="btn btn-sm btn-icon" style="text-decoration:none">↗</a><button class="btn btn-sm btn-icon" onclick="removeChannel('${ch.id}')" style="color:var(--danger)">✕</button></div><div class="row-exp-btn">▼</div></div>${detail}</div>`;
+  // Notif strip — selalu tampil walau row tidak di-expand
+  let notifStrip="";
+  if(urgent){
+    const lu=lastUpload(ch);
+    notifStrip=`<div class="row-notif-strip strip-red">🔴 Belum upload hari ini${lu?" · Terakhir: "+fmtDtS(lu):""} — segera upload!</div>`;
+  } else if(s1late){
+    const missing=dayFromFirst(ch)-(ch.videoCount||0);
+    notifStrip=`<div class="row-notif-strip strip-red">🔴 Ketinggalan ${missing} video · Hari ke-${dayFromFirst(ch)}, baru ${ch.videoCount||0} video — harus catch up!</div>`;
+  } else if(near2){
+    notifStrip=`<div class="row-notif-strip strip-yellow">⚡ Avg views ${avg} — hampir Tahap 2! Siapkan konten 30 hari ke depan sekarang.</div>`;
+  } else if(ch.stage===3){
+    notifStrip=`<div class="row-notif-strip strip-green">✅ Siap pindah ke email pengelola — subscriber sudah ≥500</div>`;
+  } else if(ch.stage===1&&dayNum>=6&&(ch.videoCount||0)>=6&&avg!==null&&avg>=(arSettings.warnThreshold||70)){
+    notifStrip=`<div class="row-notif-strip strip-yellow">⚡ Avg views ${avg} — mendekati syarat Tahap 2</div>`;
+  }
+  return `<div class="ch-row${urgent||s1late?" urgent":near2?" near2":""}${exp?" expanded":""}" id="row-${ch.id}"><div class="row-head" onclick="toggleExpand('${ch.id}')"><div class="row-av">${ch.thumbnail?`<img src="${ch.thumbnail}" alt="">`:ini}</div><span class="row-name">${ch.name||ch.inputValue}</span><div class="row-badges"><span class="badge badge-${ch.stage}">Tahap ${ch.stage}</span><span class="${dayBadgeClass}">${ch.stage===1&&dayNum>=6&&(ch.videoCount||0)<6?`⚠ Hari ke-${dayNum}`:ch.stage===1&&dayNum>=4&&dayNum<6?`⚡ Hari ke-${dayNum}`:ch.stage===1&&dayNum>=6&&(ch.videoCount||0)>=6?`✓ Hari ke-${dayNum}`:`Hari ke-${dayNum}`}</span>${manualBadge}${stTag}</div><div class="row-metric"><div class="val">${rmVal}</div><div class="lbl">${rmLbl}</div></div><div class="row-actions" onclick="event.stopPropagation()">${apiKeys.length?`<button class="btn btn-sm btn-icon" onclick="refreshOne('${ch.id}')">${loading[ch.id]?'<span class="spin">↻</span>':"↻"}</button>`:""}<a href="${ytUrl}" target="_blank" class="btn btn-sm btn-icon" style="text-decoration:none">↗</a><button class="btn btn-sm btn-icon" onclick="removeChannel('${ch.id}')" style="color:var(--danger)">✕</button></div><div class="row-exp-btn">▼</div></div>${notifStrip}${detail}</div>`;
 }
 function render(){
   document.getElementById("stats").innerHTML=`<div class="stat"><div class="lbl">Total</div><div class="num">${channels.length}</div></div><div class="stat s1"><div class="lbl">Tahap 1</div><div class="num">${cnt(1)}</div></div><div class="stat s2"><div class="lbl">Tahap 2</div><div class="num">${cnt(2)}</div></div><div class="stat s3"><div class="lbl">Tahap 3</div><div class="num">${cnt(3)}</div></div>`;
