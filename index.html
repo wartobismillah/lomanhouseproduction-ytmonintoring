@@ -693,12 +693,18 @@ async function refreshAll(auto=false){
   if(!apiKeys.length){if(!auto)alert("Tambah API Key dulu.");return;}
   const btn=document.getElementById("btn-ref-all"),ico=document.getElementById("ref-ico");
   btn.disabled=true;ico.className="spin";
-  if(auto)setSyncSt("⟳ Auto-refresh YouTube sedang berjalan ("+channels.length+" channel)...","#3266ad");
-  for(const ch of channels)await refreshOne(ch.id);
+  const total=channels.length;
+  for(let i=0;i<channels.length;i++){
+    const ch=channels[i];
+    const pct=Math.round((i/total)*100);
+    const bar="█".repeat(Math.round(pct/10))+"░".repeat(10-Math.round(pct/10));
+    setSyncSt(`⟳ Refresh ${i+1}/${total} · ${pct}% [${bar}] — ${ch.name||ch.inputValue}...`,"#3266ad");
+    await refreshOne(ch.id);
+  }
   lastYTRefresh=today();
   await saveToSheets();
   ico.className="";btn.disabled=false;
-  setSyncSt("✓ YouTube di-refresh — "+fmtDtT(new Date().toISOString()),"var(--ok)");
+  setSyncSt("✓ Semua "+total+" channel di-refresh — "+fmtDtT(new Date().toISOString()),"var(--ok)");
   renderArBar();
 }
 function changeStage(id,s){channels=channels.map(c=>c.id===id?{...c,stage:parseInt(s),stageDate:today(),stageOverride:true}:c);saveToSheets();render();}
